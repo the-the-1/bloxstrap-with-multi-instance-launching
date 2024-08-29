@@ -1,10 +1,13 @@
 ﻿using System.Reflection;
-using System.Web;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Threading;
 
-using Windows.Win32;
-using Windows.Win32.Foundation;
+using Microsoft.Win32;
+
+using Bloxstrap.Models.SettingTasks.Base;
+using Bloxstrap.UI.Elements.About.Pages;
+using Bloxstrap.UI.Elements.About;
 
 namespace Bloxstrap
 {
@@ -15,29 +18,34 @@ namespace Bloxstrap
     {
         public const string ProjectName = "Bloxstrap";
         public const string ProjectRepository = "the-the-1/bloxstrap-with-multi-instance-launching";
+
         public const string RobloxPlayerAppName = "RobloxPlayerBeta";
         public const string RobloxStudioAppName = "RobloxStudioBeta";
 
-        // used only for communicating between app and menu - use Directories.Base for anything else
-        public static string BaseDirectory = null!;
-        public static string? CustomFontLocation;
-
-        public static bool ShouldSaveConfigs { get; set; } = false;
-
-        public static bool IsSetupComplete { get; set; } = true;
-        public static bool IsFirstRun { get; set; } = true;
+        // simple shorthand for extremely frequently used and long string - this goes under HKCU
+        public const string UninstallKey = $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{ProjectName}";
 
         public static LaunchSettings LaunchSettings { get; private set; } = null!;
 
         public static BuildMetadataAttribute BuildMetadata = Assembly.GetExecutingAssembly().GetCustomAttribute<BuildMetadataAttribute>()!;
         public static string Version = Assembly.GetExecutingAssembly().GetName().Version!.ToString();
 
-        public static NotifyIconWrapper? NotifyIcon { get; private set; }
+        public static bool IsActionBuild => !String.IsNullOrEmpty(BuildMetadata.CommitRef);
+
+        public static bool IsProductionBuild => IsActionBuild && BuildMetadata.CommitRef.StartsWith("tag", StringComparison.Ordinal);
+
+        public static readonly MD5 MD5Provider = MD5.Create();
+
+        public static NotifyIconWrapper? NotifyIcon { get; set; }
 
         public static readonly Logger Logger = new();
 
+        public static readonly Dictionary<string, BaseTask> PendingSettingTasks = new();
+
         public static readonly JsonManager<Settings> Settings = new();
+
         public static readonly JsonManager<State> State = new();
+
         public static readonly FastFlagManager FastFlags = new();
 
         public static readonly HttpClient HttpClient = new(
@@ -52,18 +60,10 @@ namespace Bloxstrap
 
         public static void Terminate(ErrorCode exitCode = ErrorCode.ERROR_SUCCESS)
         {
-            if (IsFirstRun)
-            {
-                if (exitCode == ErrorCode.ERROR_CANCELLED)
-                    exitCode = ErrorCode.ERROR_INSTALL_USEREXIT;
-            }
-
             int exitCodeNum = (int)exitCode;
 
             Logger.WriteLine("App::Terminate", $"Terminating with exit code {exitCodeNum} ({exitCode})");
 
-            Settings.Save();
-            State.Save();
             NotifyIcon?.Dispose();
 
             Environment.Exit(exitCodeNum);
@@ -91,23 +91,14 @@ namespace Bloxstrap
 
             _showingExceptionDialog = true;
 
-            if (!LaunchSettings.IsQuiet)
+            if (!LaunchSettings.QuietFlag.Active)
                 Frontend.ShowExceptionDialog(exception);
 
             Terminate(ErrorCode.ERROR_INSTALL_FAILURE);
 #endif
         }
 
-        private void StartupFinished()
-        {
-            const string LOG_IDENT = "App::StartupFinished";
-
-            Logger.WriteLine(LOG_IDENT, "Successfully reached end of main thread. Terminating...");
-
-            Terminate();
-        }
-
-        protected override async void OnStartup(StartupEventArgs e)
+        protected override void OnStartup(StartupEventArgs e)
         {
             const string LOG_IDENT = "App::OnStartup";
 
@@ -117,10 +108,10 @@ namespace Bloxstrap
 
             Logger.WriteLine(LOG_IDENT, $"Starting {ProjectName} v{Version}");
 
-            if (String.IsNullOrEmpty(BuildMetadata.CommitHash))
-                Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from {BuildMetadata.Machine}");
-            else
+            if (IsActionBuild)
                 Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from commit {BuildMetadata.CommitHash} ({BuildMetadata.CommitRef})");
+            else
+                Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from {BuildMetadata.Machine}");
 
             Logger.WriteLine(LOG_IDENT, $"Loaded from {Paths.Process}");
 
@@ -128,22 +119,97 @@ namespace Bloxstrap
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
+            HttpClient.Timeout = TimeSpan.FromSeconds(30);
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", ProjectRepository);
+
             LaunchSettings = new LaunchSettings(e.Args);
 
-            using (var checker = new InstallChecker())
+            // installation check begins here
+            using var uninstallKey = Registry.CurrentUser.OpenSubKey(UninstallKey);
+            string? installLocation = null;
+            bool fixInstallLocation = false;
+            
+            if (uninstallKey?.GetValue("InstallLocation") is string value)
             {
-                checker.Check();
+                if (Directory.Exists(value))
+                {
+                    installLocation = value;
+                }
+                else
+                {
+                    // check if user profile folder has been renamed
+                    // honestly, i'll be expecting bugs from this
+                    var match = Regex.Match(value, @"^[a-zA-Z]:\\Users\\([^\\]+)", RegexOptions.IgnoreCase);
+
+                    if (match.Success)
+                    {
+                        string newLocation = value.Replace(match.Value, Paths.UserProfile, StringComparison.InvariantCultureIgnoreCase);
+
+                        if (Directory.Exists(newLocation))
+                        {
+                            installLocation = newLocation;
+                            fixInstallLocation = true;
+                        }
+                    }
+                }
             }
 
-            Paths.Initialize(BaseDirectory);
-
-            // we shouldn't save settings on the first run until the first installation is finished,
-            // just in case the user decides to cancel the install
-            if (!IsFirstRun)
+            // silently change install location if we detect a portable run
+            if (installLocation is null && Directory.GetParent(Paths.Process)?.FullName is string processDir)
             {
+                var files = Directory.GetFiles(processDir).Select(x => Path.GetFileName(x)).ToArray();
+
+                // check if settings.json and state.json are the only files in the folder
+                if (files.Length <= 3 && files.Contains("Settings.json") && files.Contains("State.json"))
+                {
+                    installLocation = processDir;
+                    fixInstallLocation = true;
+                }
+            }
+
+            if (installLocation is null)
+            {
+                Logger.Initialize(true);
+                LaunchHandler.LaunchInstaller();
+            }
+            else
+            {
+                if (fixInstallLocation)
+                {
+                    var installer = new Installer
+                    {
+                        InstallLocation = installLocation,
+                        IsImplicitInstall = true
+                    };
+
+                    if (installer.CheckInstallLocation())
+                    {
+                        Logger.WriteLine(LOG_IDENT, $"Changing install location to '{installLocation}'");
+                        installer.DoInstall();
+                    }
+                }
+
+                Paths.Initialize(installLocation);
+
+                // ensure executable is in the install directory
+                if (Paths.Process != Paths.Application && !File.Exists(Paths.Application))
+                    File.Copy(Paths.Process, Paths.Application);
+
+                Logger.Initialize(LaunchSettings.UninstallFlag.Active);
+
+                if (!Logger.Initialized && !Logger.NoWriteMode)
+                {
+                    Logger.WriteLine(LOG_IDENT, "Possible duplicate launch detected, terminating.");
+                    Terminate();
+                }
+
                 Settings.Load();
                 State.Load();
                 FastFlags.Load();
+
+                // we can only parse them now as settings need
+                // to be loaded first to know what our channel is
+                // LaunchSettings.ParseRoblox();
 
                 if (!Locale.SupportedLocales.ContainsKey(Settings.Prop.Locale))
                 {
@@ -152,230 +218,117 @@ namespace Bloxstrap
                 }
 
                 Locale.Set(Settings.Prop.Locale);
-            }
-
-            LaunchSettings.ParseRoblox();
-
-            HttpClient.Timeout = TimeSpan.FromSeconds(30);
-            HttpClient.DefaultRequestHeaders.Add("User-Agent", ProjectRepository);
-
-            // TEMPORARY FILL-IN FOR NEW FUNCTIONALITY
-            // REMOVE WHEN LARGER REFACTORING IS DONE
-            var connectionResult = await RobloxDeployment.InitializeConnectivity();
-
-            if (connectionResult is not null)
-            {
-                Logger.WriteException(LOG_IDENT, connectionResult);
-
-                Frontend.ShowConnectivityDialog(
-                    Bloxstrap.Resources.Strings.Dialog_Connectivity_UnableToConnect, 
-                    Bloxstrap.Resources.Strings.Bootstrapper_Connectivity_Preventing, 
-                    connectionResult
-                );
-
-                return;
-            }
-
-            if (LaunchSettings.IsUninstall && IsFirstRun)
-            {
-                Frontend.ShowMessageBox(Bloxstrap.Resources.Strings.Bootstrapper_FirstRunUninstall, MessageBoxImage.Error);
-                Terminate(ErrorCode.ERROR_INVALID_FUNCTION);
-                return;
-            }
-
-            // we shouldn't save settings on the first run until the first installation is finished,
-            // just in case the user decides to cancel the install
-            if (!IsFirstRun)
-            {
-                Logger.Initialize(LaunchSettings.IsUninstall);
-
-                if (!Logger.Initialized && !Logger.NoWriteMode)
-                {
-                    Logger.WriteLine(LOG_IDENT, "Possible duplicate launch detected, terminating.");
-                    Terminate();
-                }
-            }
-
-            if (!LaunchSettings.IsUninstall && !LaunchSettings.IsMenuLaunch)
-                NotifyIcon = new();
 
 #if !DEBUG
-            if (!LaunchSettings.IsUninstall && !IsFirstRun)
-                InstallChecker.CheckUpgrade();
+                if (!LaunchSettings.UninstallFlag.Active)
+                    Installer.HandleUpgrade();
 #endif
 
-            if (LaunchSettings.IsMenuLaunch)
-            {
-                Process? menuProcess = Utilities.GetProcessesSafe().Where(x => x.MainWindowTitle == $"{ProjectName} Menu").FirstOrDefault();
-
-                if (menuProcess is not null)
+                if (App.Settings.Prop.ConfirmLaunches && LaunchSettings.RobloxLaunchMode == LaunchMode.Player && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
                 {
-                    var handle = menuProcess.MainWindowHandle;
-                    Logger.WriteLine(LOG_IDENT, $"Found an already existing menu window with handle {handle}");
-                    PInvoke.SetForegroundWindow((HWND)handle);
+                    // this currently doesn't work very well since it relies on checking the existence of the singleton mutex
+                    // which often hangs around for a few seconds after the window closes
+                    // it would be better to have this rely on the activity tracker when we implement IPC in the planned refactoring
+
+                    var result = Frontend.ShowMessageBox(App.Settings.Prop.MultiInstanceLaunching ? Bloxstrap.Resources.Strings.Bootstrapper_ConfirmLaunch_MultiInstanceEnabled : Bloxstrap.Resources.Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
+
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        App.Terminate();
+                        return;
+                    }
                 }
-                else
+
+                // handle roblox singleton mutex for multi-instance launching
+                // note we're handling it here in the main thread and NOT in the
+                // bootstrapper as handling mutexes in async contexts suuuuuucks
+
+                Mutex? singletonMutex = null;
+
+                if (Settings.Prop.MultiInstanceLaunching && LaunchSettings.RobloxLaunchMode == LaunchMode.Player)
                 {
-                    bool showAlreadyRunningWarning = Process.GetProcessesByName(ProjectName).Length > 1 && !LaunchSettings.IsQuiet;
-                    Frontend.ShowMenu(showAlreadyRunningWarning);
+                    Logger.WriteLine(LOG_IDENT, "Attempting to create singleton mutex...");
+
+                    try
+                    {
+                        Mutex.OpenExisting("ROBLOX_singletonMutex");
+                        Logger.WriteLine(LOG_IDENT, "Singleton mutex already exists.");
+                    }
+                    catch
+                    {
+                        // create the singleton mutex before the game client does
+                        singletonMutex = new Mutex(true, "ROBLOX_singletonMutex");
+                        Logger.WriteLine(LOG_IDENT, "Created singleton mutex.");
+                    }
                 }
 
-                StartupFinished();
-                return;
-            }
+                string CookiesFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Roblox\LocalStorage\RobloxCookies.dat");
+                Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat path is: {CookiesFilePath}");
 
-            if (!IsFirstRun)
-                ShouldSaveConfigs = true;
+                if (LaunchSettings.RobloxLaunchMode == LaunchMode.Player) {
+                    if (File.Exists(CookiesFilePath)) {
+                        FileAttributes attributes = File.GetAttributes(CookiesFilePath);
 
-            if (Settings.Prop.ConfirmLaunches && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
-            {
-                // this currently doesn't work very well since it relies on checking the existence of the singleton mutex
-                // which often hangs around for a few seconds after the window closes
-                // it would be better to have this rely on the activity tracker when we implement IPC in the planned refactoring
+                        if (Settings.Prop.FixTeleports) {
+                            Logger.WriteLine(LOG_IDENT, "Attempting to apply teleport fix...");
 
-                var result = Frontend.ShowMessageBox(Settings.Prop.MultiInstanceLaunching ? Bloxstrap.Resources.Strings.Bootstrapper_ConfirmLaunch_MultiInstanceEnabled : Bloxstrap.Resources.Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
+                            if (!attributes.HasFlag(FileAttributes.ReadOnly)) {
+                                Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is writable, applying teleport fix...");
 
-                if (result != MessageBoxResult.Yes)
-                {
-                    StartupFinished();
-                    return;
-                }
-            }
-
-            // start bootstrapper and show the bootstrapper modal if we're not running silently
-            Logger.WriteLine(LOG_IDENT, "Initializing bootstrapper");
-            Bootstrapper bootstrapper = new(LaunchSettings.RobloxLaunchArgs, LaunchSettings.RobloxLaunchMode);
-            IBootstrapperDialog? dialog = null;
-
-            if (!LaunchSettings.IsQuiet)
-            {
-                Logger.WriteLine(LOG_IDENT, "Initializing bootstrapper dialog");
-                dialog = Settings.Prop.BootstrapperStyle.GetNew();
-                bootstrapper.Dialog = dialog;
-                dialog.Bootstrapper = bootstrapper;
-            }
-
-            // handle roblox singleton mutex for multi-instance launching
-            // note we're handling it here in the main thread and NOT in the
-            // bootstrapper as handling mutexes in async contexts suuuuuucks
-
-            Mutex? singletonMutex = null;
-
-            if (Settings.Prop.MultiInstanceLaunching && LaunchSettings.RobloxLaunchMode == LaunchMode.Player)
-            {
-                Logger.WriteLine(LOG_IDENT, "Creating singleton mutex");
-
-                try
-                {
-                    Mutex.OpenExisting("ROBLOX_singletonMutex");
-                    Logger.WriteLine(LOG_IDENT, "Warning - singleton mutex already exists!");
-                }
-                catch
-                {
-                    // create the singleton mutex before the game client does
-                    singletonMutex = new Mutex(true, "ROBLOX_singletonMutex");
-                }
-            }
-
-            Task bootstrapperTask = Task.Run(async () => await bootstrapper.Run()).ContinueWith(t =>
-            {
-                Logger.WriteLine(LOG_IDENT, "Bootstrapper task has finished");
-
-                // notifyicon is blocking main thread, must be disposed here
-                NotifyIcon?.Dispose();
-
-                if (t.IsFaulted)
-                    Logger.WriteLine(LOG_IDENT, "An exception occurred when running the bootstrapper");
-
-                if (t.Exception is null)
-                    return;
-
-                Logger.WriteException(LOG_IDENT, t.Exception);
-
-                Exception exception = t.Exception;
-
-#if !DEBUG
-                if (t.Exception.GetType().ToString() == "System.AggregateException")
-                    exception = t.Exception.InnerException!;
-#endif
-
-                FinalizeExceptionHandling(exception, false);
-            });
-
-            string CookiesFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Roblox\LocalStorage\RobloxCookies.dat");
-            App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat path is: {CookiesFilePath}");
-
-            if (LaunchSettings.RobloxLaunchMode == LaunchMode.Player) {
-                if (File.Exists(CookiesFilePath)) {
-                    FileAttributes attributes = File.GetAttributes(CookiesFilePath);
-
-                    if (Settings.Prop.FixTeleports) {
-                        App.Logger.WriteLine(LOG_IDENT, "Applying teleport fix...");
-
-                        if (!attributes.HasFlag(FileAttributes.ReadOnly)) {
-                            App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is writable");
-
-                            try {
-                                FileStream fileStream = File.Open(CookiesFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-                                fileStream.SetLength(0);
-                                fileStream.Close();
-                            } catch (Exception ex) {
-                                App.Logger.WriteLine(LOG_IDENT, $"Failed to clear contents of RobloxCookies.dat | Exception: {ex}");
-                            } finally {
-                                File.SetAttributes(CookiesFilePath, FileAttributes.ReadOnly);
-                                App.Logger.WriteLine(LOG_IDENT, $"Added read-only attribute to RobloxCookies.dat");
+                                try {
+                                    FileStream fileStream = File.Open(CookiesFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                                    fileStream.SetLength(0);
+                                    fileStream.Close();
+                                } catch (Exception ex) {
+                                    Logger.WriteLine(LOG_IDENT, $"Failed to clear contents of RobloxCookies.dat | Exception: {ex}");
+                                } finally {
+                                    File.SetAttributes(CookiesFilePath, FileAttributes.ReadOnly);
+                                    Logger.WriteLine(LOG_IDENT, $"Successfully applied teleport fix.");
+                                }
+                            } else {
+                                Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is already read-only, skipping teleport fix.");
                             }
                         } else {
-                            App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is already read-only");
+                            Logger.WriteLine(LOG_IDENT, "Attempting to remove teleport fix...");
+
+                            if (attributes.HasFlag(FileAttributes.ReadOnly)) {
+                                File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
+                                Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (1)");
+                            }
                         }
                     } else {
-                        App.Logger.WriteLine(LOG_IDENT, "Removing teleport fix...");
+                        Logger.WriteLine(LOG_IDENT, $"Failed to find RobloxCookies.dat");
+                        Frontend.ShowMessageBox($"Failed to find RobloxCookies.dat | Path: {CookiesFilePath}", MessageBoxImage.Error);
+                    }
+                }
+
+                LaunchHandler.ProcessLaunchArgs();
+
+                if (singletonMutex is not null)
+                {
+                    Logger.WriteLine(LOG_IDENT, "We have singleton mutex ownership! Running in background until all Roblox processes are closed");
+
+                    // we've got ownership of the roblox singleton mutex!
+                    // if we stop running, everything will screw up once any more roblox instances launched
+                    while (Process.GetProcessesByName("RobloxPlayerBeta").Any()) 
+                    {
+                        Thread.Sleep(5000);
+                    };
+
+                    Logger.WriteLine(LOG_IDENT, "All Roblox processes closed!");
+
+                    if (File.Exists(CookiesFilePath)) {
+                        FileAttributes attributes = File.GetAttributes(CookiesFilePath);
 
                         if (attributes.HasFlag(FileAttributes.ReadOnly)) {
                             File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
-                            App.Logger.WriteLine(LOG_IDENT, $"Removed read-only attribute from RobloxCookies.dat (teleport fix application)");
+                            Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (2)");
                         }
                     }
-                } else {
-                    App.Logger.WriteLine(LOG_IDENT, $"Failed to find RobloxCookies.dat | Path: {CookiesFilePath}");
-                    Frontend.ShowMessageBox($"Failed to find RobloxCookies.dat | Path: {CookiesFilePath}", MessageBoxImage.Error);
                 }
             }
 
-            // this ordering is very important as all wpf windows are shown as modal dialogs, mess it up and you'll end up blocking input to one of them
-            dialog?.ShowBootstrapper();
-
-            if (!LaunchSettings.IsNoLaunch && Settings.Prop.EnableActivityTracking)
-                NotifyIcon?.InitializeContextMenu();
-
-            Logger.WriteLine(LOG_IDENT, "Waiting for bootstrapper task to finish");
-
-            bootstrapperTask.Wait();
-
-            if (singletonMutex is not null)
-            {
-                Logger.WriteLine(LOG_IDENT, "We have singleton mutex ownership! Running in background until all Roblox processes are closed");
-
-                // we've got ownership of the roblox singleton mutex!
-                // if we stop running, everything will screw up once any more roblox instances launched
-                while (Process.GetProcessesByName("RobloxPlayerBeta").Any()) 
-                {
-                    Thread.Sleep(5000);
-                };
-
-                App.Logger.WriteLine(LOG_IDENT, "All Roblox processes closed!");
-
-                if (File.Exists(CookiesFilePath)) {
-                    FileAttributes attributes = File.GetAttributes(CookiesFilePath);
-
-                    if (attributes.HasFlag(FileAttributes.ReadOnly)) {
-                        File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
-                        App.Logger.WriteLine(LOG_IDENT, $"Removed read-only attribute from RobloxCookies.dat (roblox end)");
-                    }
-                }
-            }
-
-            StartupFinished();
+            Terminate();
         }
     }
 }

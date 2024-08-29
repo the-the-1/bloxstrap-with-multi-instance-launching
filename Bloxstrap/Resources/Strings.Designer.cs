@@ -61,6 +61,33 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Licenses.
+        /// </summary>
+        public static string About_Licenses_Title {
+            get {
+                return ResourceManager.GetString("About.Licenses.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to About Bloxstrap.
+        /// </summary>
+        public static string About_Title {
+            get {
+                return ResourceManager.GetString("About.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Translators.
+        /// </summary>
+        public static string About_Translators_Title {
+            get {
+                return ResourceManager.GetString("About.Translators.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to left game.
         /// </summary>
         public static string ActivityTracker_LeftGame {
@@ -306,6 +333,15 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to You currently do not have the WebView2 runtime installed. Some Roblox features will not work properly without it, such as the desktop app. Would you like to download it now?.
+        /// </summary>
+        public static string Bootstrapper_WebView2NotFound {
+            get {
+                return ResourceManager.GetString("Bootstrapper.WebView2NotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Roblox requires the use of Windows Media Foundation components. You appear to be missing them, likely because you are using an N edition of Windows. Please install them first, and then launch Roblox..
         /// </summary>
         public static string Bootstrapper_WMFNotFound {
@@ -459,6 +495,24 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Back.
+        /// </summary>
+        public static string Common_Navigation_Back {
+            get {
+                return ResourceManager.GetString("Common.Navigation.Back", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Next.
+        /// </summary>
+        public static string Common_Navigation_Next {
+            get {
+                return ResourceManager.GetString("Common.Navigation.Next", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to New.
         /// </summary>
         public static string Common_New {
@@ -500,6 +554,33 @@ namespace Bloxstrap.Resources {
         public static string Common_Reset {
             get {
                 return ResourceManager.GetString("Common.Reset", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Shortcuts.
+        /// </summary>
+        public static string Common_Shortcuts {
+            get {
+                return ResourceManager.GetString("Common.Shortcuts", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Desktop icon.
+        /// </summary>
+        public static string Common_Shortcuts_Desktop {
+            get {
+                return ResourceManager.GetString("Common.Shortcuts.Desktop", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start Menu icon.
+        /// </summary>
+        public static string Common_Shortcuts_StartMenu {
+            get {
+                return ResourceManager.GetString("Common.Shortcuts.StartMenu", resourceCulture);
             }
         }
         
@@ -576,6 +657,15 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Roblox is still launching. A log file will only be available once Roblox launches..
+        /// </summary>
+        public static string ContextMenu_RobloxNotRunning {
+            get {
+                return ResourceManager.GetString("ContextMenu.RobloxNotRunning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to See server details.
         /// </summary>
         public static string ContextMenu_SeeServerDetails {
@@ -621,7 +711,7 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Located at {0}
+        ///   Looks up a localized string similar to Location: {0}
         ///Click for more information.
         /// </summary>
         public static string ContextMenu_ServerInformation_Notification_Text {
@@ -631,11 +721,29 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Connected to {0} server.
+        ///   Looks up a localized string similar to Connected to private server.
         /// </summary>
-        public static string ContextMenu_ServerInformation_Notification_Title {
+        public static string ContextMenu_ServerInformation_Notification_Title_Private {
             get {
-                return ResourceManager.GetString("ContextMenu.ServerInformation.Notification.Title", resourceCulture);
+                return ResourceManager.GetString("ContextMenu.ServerInformation.Notification.Title.Private", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Connected to public server.
+        /// </summary>
+        public static string ContextMenu_ServerInformation_Notification_Title_Public {
+            get {
+                return ResourceManager.GetString("ContextMenu.ServerInformation.Notification.Title.Public", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Connected to reserved server.
+        /// </summary>
+        public static string ContextMenu_ServerInformation_Notification_Title_Reserved {
+            get {
+                return ResourceManager.GetString("ContextMenu.ServerInformation.Notification.Title.Reserved", resourceCulture);
             }
         }
         
@@ -663,6 +771,33 @@ namespace Bloxstrap.Resources {
         public static string Dialog_AddFastFlag_Title {
             get {
                 return ResourceManager.GetString("Dialog.AddFastFlag.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please wait for installation to finish..
+        /// </summary>
+        public static string Dialog_AlreadyRunning_Installer {
+            get {
+                return ResourceManager.GetString("Dialog.AlreadyRunning.Installer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please wait for uninstallation to finish..
+        /// </summary>
+        public static string Dialog_AlreadyRunning_Uninstaller {
+            get {
+                return ResourceManager.GetString("Dialog.AlreadyRunning.Uninstaller", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bloxstrap was unable to create shortcuts for the Desktop and Start menu. Try creating them later through the settings..
+        /// </summary>
+        public static string Dialog_CannotCreateShortcuts {
+            get {
+                return ResourceManager.GetString("Dialog.CannotCreateShortcuts", resourceCulture);
             }
         }
         
@@ -737,6 +872,17 @@ namespace Bloxstrap.Resources {
         public static string Dialog_Exception_Info_2 {
             get {
                 return ResourceManager.GetString("Dialog.Exception.Info.2", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check the [Bloxstrap Wiki]({0}) first to see if this problem has already been addressed with a fix.
+        ///
+        ///If not, then please report this exception to the maintainers of this fork. Do NOT report this to Bloxstrap&apos;s GitHub issues, as this is an unoffical build..
+        /// </summary>
+        public static string Dialog_Exception_Info_2_Alt {
+            get {
+                return ResourceManager.GetString("Dialog.Exception.Info.2.Alt", resourceCulture);
             }
         }
         
@@ -1149,6 +1295,216 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The version of Bloxstrap you&apos;ve launched is older than the version you currently have installed.
+        ///Issues may occur and your settings may be altered. A reinstall is recommended.
+        ///Are you sure you want to continue?.
+        /// </summary>
+        public static string InstallChecker_VersionLessThanInstalled {
+            get {
+                return ResourceManager.GetString("InstallChecker.VersionLessThanInstalled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Will drop you into the desktop app once everything&apos;s done.
+        /// </summary>
+        public static string Installer_Completion_Launch_Description {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Launch.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Install and launch Roblox.
+        /// </summary>
+        public static string Installer_Completion_Launch_Title {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Launch.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tweak with all the features it has to offer.
+        /// </summary>
+        public static string Installer_Completion_Settings_Description {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Settings.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configure Bloxstrap&apos;s settings.
+        /// </summary>
+        public static string Installer_Completion_Settings_Title {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Settings.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bloxstrap has successfully been installed.
+        ///
+        ///Roblox has not yet been installed, that will happen when you launch it with Bloxstrap for the first time. However, before you do that, you may want to configure Bloxstrap&apos;s settings first.
+        ///
+        ///Also, to keep Bloxstrap registered as the website launch handler, avoid using the &quot;Roblox Player&quot; shortcut to launch Roblox. If you don&apos;t see Bloxstrap show when launching from the website, simply launch Roblox with Bloxstrap once from the desktop to fix it.
+        ///
+        ///What would y [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string Installer_Completion_Text {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Completion.
+        /// </summary>
+        public static string Installer_Completion_Title {
+            get {
+                return ResourceManager.GetString("Installer.Completion.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Existing data found. Your mods and settings will be restored..
+        /// </summary>
+        public static string Installer_Install_Location_DataFound {
+            get {
+                return ResourceManager.GetString("Installer.Install.Location.DataFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Roblox will also be installed to this path. Change this if you prefer to install all your games to a separate drive. Otherwise, it&apos;s recommended that you keep this as it is..
+        /// </summary>
+        public static string Installer_Install_Location_Text {
+            get {
+                return ResourceManager.GetString("Installer.Install.Location.Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Choose where to install to.
+        /// </summary>
+        public static string Installer_Install_Location_Title {
+            get {
+                return ResourceManager.GetString("Installer.Install.Location.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to These are general shortcuts that bring up a multi-choice launch menu. Shortcuts for specific functions can be created later in the settings..
+        /// </summary>
+        public static string Installer_Install_Shortcuts_Description {
+            get {
+                return ResourceManager.GetString("Installer.Install.Shortcuts.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Install.
+        /// </summary>
+        public static string Installer_Install_Title {
+            get {
+                return ResourceManager.GetString("Installer.Install.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bloxstrap Installer.
+        /// </summary>
+        public static string Installer_Title {
+            get {
+                return ResourceManager.GetString("Installer.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Thank you for downloading Bloxstrap. 
+        ///
+        ///You should have gotten it from either {0} or {1}. Those are the only official websites to get it from.
+        ///
+        ///This installation process will be quick and simple, and you will be able to configure any of Bloxstrap&apos;s settings after installation..
+        /// </summary>
+        public static string Installer_Welcome_MainText {
+            get {
+                return ResourceManager.GetString("Installer.Welcome.MainText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please click &apos;Next&apos; to continue..
+        /// </summary>
+        public static string Installer_Welcome_NextToContinue {
+            get {
+                return ResourceManager.GetString("Installer.Welcome.NextToContinue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Welcome.
+        /// </summary>
+        public static string Installer_Welcome_Title {
+            get {
+                return ResourceManager.GetString("Installer.Welcome.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You are trying to install version {0} of Bloxstrap, but the latest version available is {1}. Would you like to download it?.
+        /// </summary>
+        public static string Installer_Welcome_UpdateNotice {
+            get {
+                return ResourceManager.GetString("Installer.Welcome.UpdateNotice", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Configure settings.
+        /// </summary>
+        public static string LaunchMenu_ConfigureSettings {
+            get {
+                return ResourceManager.GetString("LaunchMenu.ConfigureSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Launch Roblox.
+        /// </summary>
+        public static string LaunchMenu_LaunchRoblox {
+            get {
+                return ResourceManager.GetString("LaunchMenu.LaunchRoblox", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What do you want to do?.
+        /// </summary>
+        public static string LaunchMenu_Title {
+            get {
+                return ResourceManager.GetString("LaunchMenu.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to See the Wiki for help.
+        /// </summary>
+        public static string LaunchMenu_Wiki_Description {
+            get {
+                return ResourceManager.GetString("LaunchMenu.Wiki.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Having an issue?.
+        /// </summary>
+        public static string LaunchMenu_Wiki_Title {
+            get {
+                return ResourceManager.GetString("LaunchMenu.Wiki.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No log file will be written for this launch because Bloxstrap is unable to write to the folder at &apos;{0}&apos;.
         /// </summary>
         public static string Logger_NoWriteMode {
@@ -1527,24 +1883,6 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Bloxstrap will place an icon on the desktop that launches Roblox the next time it launches..
-        /// </summary>
-        public static string Menu_Behaviour_CreateDesktopIcon_Description {
-            get {
-                return ResourceManager.GetString("Menu.Behaviour.CreateDesktopIcon.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Create desktop icon.
-        /// </summary>
-        public static string Menu_Behaviour_CreateDesktopIcon_Title {
-            get {
-                return ResourceManager.GetString("Menu.Behaviour.CreateDesktopIcon.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Configure what Bloxstrap should do when launching..
         /// </summary>
         public static string Menu_Behaviour_Description {
@@ -1718,6 +2056,15 @@ namespace Bloxstrap.Resources {
         public static string Menu_FastFlagEditor_InvalidNumberValue {
             get {
                 return ResourceManager.GetString("Menu.FastFlagEditor.InvalidNumberValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The entry for &apos;{0}&apos; is not valid as the place filter is not formatted correctly..
+        /// </summary>
+        public static string Menu_FastFlagEditor_InvalidPlaceFilter {
+            get {
+                return ResourceManager.GetString("Menu.FastFlagEditor.InvalidPlaceFilter", resourceCulture);
             }
         }
         
@@ -2104,87 +2451,6 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Install.
-        /// </summary>
-        public static string Menu_Install {
-            get {
-                return ResourceManager.GetString("Menu.Install", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Configure how Bloxstrap/Roblox is installed..
-        /// </summary>
-        public static string Menu_Installation_Description {
-            get {
-                return ResourceManager.GetString("Menu.Installation.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Choose where Bloxstrap should be installed to..
-        /// </summary>
-        public static string Menu_Installation_InstallLocation_Description {
-            get {
-                return ResourceManager.GetString("Menu.Installation.InstallLocation.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Install Location.
-        /// </summary>
-        public static string Menu_Installation_InstallLocation_Title {
-            get {
-                return ResourceManager.GetString("Menu.Installation.InstallLocation.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Where Bloxstrap is currently installed to..
-        /// </summary>
-        public static string Menu_Installation_OpenInstallFolder_Description {
-            get {
-                return ResourceManager.GetString("Menu.Installation.OpenInstallFolder.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Open Installation Folder.
-        /// </summary>
-        public static string Menu_Installation_OpenInstallFolder_Title {
-            get {
-                return ResourceManager.GetString("Menu.Installation.OpenInstallFolder.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Installation.
-        /// </summary>
-        public static string Menu_Installation_Title {
-            get {
-                return ResourceManager.GetString("Menu.Installation.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Here&apos;s a guide on how to uninstall Bloxstrap..
-        /// </summary>
-        public static string Menu_Installation_UninstallGuide_Description {
-            get {
-                return ResourceManager.GetString("Menu.Installation.UninstallGuide.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Looking to uninstall?.
-        /// </summary>
-        public static string Menu_Installation_UninstallGuide_Title {
-            get {
-                return ResourceManager.GetString("Menu.Installation.UninstallGuide.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Bloxstrap cannot be installed here. Please choose a different location, or resort to using the default location by clicking the reset button..
         /// </summary>
         public static string Menu_InstallLocation_CantInstall {
@@ -2524,15 +2790,6 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Bloxstrap must first be installed..
-        /// </summary>
-        public static string Menu_Mods_OpenModsFolder_MustBeInstalled {
-            get {
-                return ResourceManager.GetString("Menu.Mods.OpenModsFolder.MustBeInstalled", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Open Mods Folder.
         /// </summary>
         public static string Menu_Mods_OpenModsFolder_Title {
@@ -2547,6 +2804,17 @@ namespace Bloxstrap.Resources {
         public static string Menu_Mods_Presets_EmojiType_Description {
             get {
                 return ResourceManager.GetString("Menu.Mods.Presets.EmojiType.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The emoji mod could not be applied because of a network error during download.
+        ///
+        ///{0}.
+        /// </summary>
+        public static string Menu_Mods_Presets_EmojiType_Error {
+            get {
+                return ResourceManager.GetString("Menu.Mods.Presets.EmojiType.Error", resourceCulture);
             }
         }
         
@@ -2650,42 +2918,6 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to There&apos;s just a few things you first should know about..
-        /// </summary>
-        public static string Menu_PreInstall_Description {
-            get {
-                return ResourceManager.GetString("Menu.PreInstall.Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to After installation has finished, the Bloxstrap Menu will be registered as an application in the Start menu. If you ever need to access it again to re-adjust your settings, or access resources such as Fast Flag management, you can find it there..
-        /// </summary>
-        public static string Menu_PreInstall_Info_1 {
-            get {
-                return ResourceManager.GetString("Menu.PreInstall.Info.1", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to If you ever need help or guidance with anything, be sure to check the [Wiki]({0}). If you still need something, open an [issue]({1}) on GitHub, or join our [Discord server]({2})..
-        /// </summary>
-        public static string Menu_PreInstall_Info_2 {
-            get {
-                return ResourceManager.GetString("Menu.PreInstall.Info.2", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Before you install....
-        /// </summary>
-        public static string Menu_PreInstall_Title {
-            get {
-                return ResourceManager.GetString("Menu.PreInstall.Title", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Save.
         /// </summary>
         public static string Menu_Save {
@@ -2713,7 +2945,52 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Bloxstrap Menu.
+        ///   Looks up a localized string similar to Configure how Bloxstrap can be readily launched..
+        /// </summary>
+        public static string Menu_Shortcuts_Description {
+            get {
+                return ResourceManager.GetString("Menu.Shortcuts.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Create shortcuts for quick access to specific functions. These will all be placed on the Desktop..
+        /// </summary>
+        public static string Menu_Shortcuts_Function_Description {
+            get {
+                return ResourceManager.GetString("Menu.Shortcuts.Function.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Function.
+        /// </summary>
+        public static string Menu_Shortcuts_Function_Title {
+            get {
+                return ResourceManager.GetString("Menu.Shortcuts.Function.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to These are the shortcuts that bring up the multi-choice launch menu..
+        /// </summary>
+        public static string Menu_Shortcuts_General_Description {
+            get {
+                return ResourceManager.GetString("Menu.Shortcuts.General.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to General.
+        /// </summary>
+        public static string Menu_Shortcuts_General_Title {
+            get {
+                return ResourceManager.GetString("Menu.Shortcuts.General.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bloxstrap Settings.
         /// </summary>
         public static string Menu_Title {
             get {
@@ -2763,6 +3040,66 @@ namespace Bloxstrap.Resources {
         public static string Menu_Integrations_FixTeleports_ConfirmEnable {
             get {
                 return ResourceManager.GetString("Menu.Integrations.FixTeleports.ConfirmEnable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You have unsaved changes. Are you sure you want to close without saving?.
+        /// </summary>
+        public static string Menu_UnsavedChanges {
+            get {
+                return ResourceManager.GetString("Menu.UnsavedChanges", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to They&apos;ll be kept where Bloxstrap was installed, and will automatically be restored on a reinstall..
+        /// </summary>
+        public static string Uninstaller_KeepData_Description {
+            get {
+                return ResourceManager.GetString("Uninstaller.KeepData.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keep my settings and mods.
+        /// </summary>
+        public static string Uninstaller_KeepData_Label {
+            get {
+                return ResourceManager.GetString("Uninstaller.KeepData.Label", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Uninstalling will remove Bloxstrap from your system, and automatically reconfigure the default Roblox launcher if it&apos;s still installed.
+        ///
+        ///If you&apos;re uninstalling or reinstalling because you are having issues with Roblox, read [this help page]({0}) first.
+        ///
+        ///The uninstall process may not be able to fully clean up itself, so you may need to manually clean up leftover files where Bloxstrap was installed.
+        ///
+        ///Bloxstrap was installed at &quot;{1}&quot;..
+        /// </summary>
+        public static string Uninstaller_Text {
+            get {
+                return ResourceManager.GetString("Uninstaller.Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Uninstall Bloxstrap.
+        /// </summary>
+        public static string Uninstaller_Title {
+            get {
+                return ResourceManager.GetString("Uninstaller.Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Uninstall.
+        /// </summary>
+        public static string Uninstaller_Uninstall {
+            get {
+                return ResourceManager.GetString("Uninstaller.Uninstall", resourceCulture);
             }
         }
     }

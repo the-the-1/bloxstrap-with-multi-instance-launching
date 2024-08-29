@@ -2,9 +2,12 @@
 
 namespace Bloxstrap
 {
-    public class JsonManager<T> where T : new()
+    public class JsonManager<T> where T : class, new()
     {
+        public T OriginalProp { get; set; } = new();
+        
         public T Prop { get; set; } = new();
+
         public virtual string FileLocation => Path.Combine(Paths.Base, $"{typeof(T).Name}.json");
 
         private string LOG_IDENT_CLASS => $"JsonManager<{typeof(T).Name}>";
@@ -37,12 +40,6 @@ namespace Bloxstrap
         {
             string LOG_IDENT = $"{LOG_IDENT_CLASS}::Save";
             
-            if (!App.ShouldSaveConfigs)
-            {
-                App.Logger.WriteLine(LOG_IDENT, "Save request ignored");
-                return;
-            }
-
             App.Logger.WriteLine(LOG_IDENT, $"Saving to {FileLocation}...");
 
             Directory.CreateDirectory(Path.GetDirectoryName(FileLocation)!);
