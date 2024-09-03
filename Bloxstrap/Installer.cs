@@ -1,9 +1,4 @@
-﻿using System.DirectoryServices;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
-using System.Windows;
-using System.Windows.Media.Animation;
-using Bloxstrap.Resources;
+﻿using System.Windows;
 using Microsoft.Win32;
 
 namespace Bloxstrap
@@ -16,6 +11,8 @@ namespace Bloxstrap
 
         public string InstallLocation = Path.Combine(Paths.LocalAppData, "Bloxstrap");
 
+        public bool ExistingDataPresent => File.Exists(Path.Combine(InstallLocation, "Settings.json"));
+
         public bool CreateDesktopShortcuts = true;
 
         public bool CreateStartMenuShortcuts = true;
@@ -26,6 +23,10 @@ namespace Bloxstrap
 
         public void DoInstall()
         {
+            const string LOG_IDENT = "Installer::DoInstall";
+
+            App.Logger.WriteLine(LOG_IDENT, "Beginning installation");
+
             // should've been created earlier from the write test anyway
             Directory.CreateDirectory(InstallLocation);
 
@@ -50,12 +51,13 @@ namespace Bloxstrap
 
                 uninstallKey.SetValue("InstallLocation", Paths.Base);
                 uninstallKey.SetValue("NoRepair", 1);
-                uninstallKey.SetValue("Publisher", "pizzaboxer");
+                uninstallKey.SetValue("Publisher", App.ProjectOwner);
                 uninstallKey.SetValue("ModifyPath", $"\"{Paths.Application}\" -settings");
                 uninstallKey.SetValue("QuietUninstallString", $"\"{Paths.Application}\" -uninstall -quiet");
                 uninstallKey.SetValue("UninstallString", $"\"{Paths.Application}\" -uninstall");
-                uninstallKey.SetValue("URLInfoAbout", $"https://github.com/{App.ProjectRepository}");
-                uninstallKey.SetValue("URLUpdateInfo", $"https://github.com/{App.ProjectRepository}/releases/latest");
+                uninstallKey.SetValue("HelpLink", App.ProjectHelpLink);
+                uninstallKey.SetValue("URLInfoAbout", App.ProjectSupportLink);
+                uninstallKey.SetValue("URLUpdateInfo", App.ProjectDownloadLink);
             }
 
             // only register player, for the scenario where the user installs bloxstrap, closes it,
@@ -73,9 +75,11 @@ namespace Bloxstrap
                 Shortcut.Create(Paths.Application, "", StartMenuShortcut);
 
             // existing configuration persisting from an earlier install
-            App.Settings.Load();
-            App.State.Load();
-            App.FastFlags.Load();
+            App.Settings.Load(false);
+            App.State.Load(false);
+            App.FastFlags.Load(false);
+
+            App.Logger.WriteLine(LOG_IDENT, "Installation finished");
         }
 
         private bool ValidateLocation()
@@ -331,8 +335,9 @@ namespace Bloxstrap
                 return;
 
             // 2.0.0 downloads updates to <BaseFolder>/Updates so lol
-            // TODO: 2.8.0 will download them to <Temp>/Bloxstrap/Updates
-            bool isAutoUpgrade = Paths.Process.StartsWith(Path.Combine(Paths.Base, "Updates")) || Paths.Process.StartsWith(Path.Combine(Paths.LocalAppData, "Temp"));
+            bool isAutoUpgrade = App.LaunchSettings.UpgradeFlag.Active
+                || Paths.Process.StartsWith(Path.Combine(Paths.Base, "Updates"))
+                || Paths.Process.StartsWith(Paths.Temp);
 
             var existingVer = FileVersionInfo.GetVersionInfo(Paths.Application).ProductVersion;
             var currentVer = FileVersionInfo.GetVersionInfo(Paths.Process).ProductVersion;
@@ -353,7 +358,7 @@ namespace Bloxstrap
             }
 
             // silently upgrade version if the command line flag is set or if we're launching from an auto update
-            if (!App.LaunchSettings.UpgradeFlag.Active && !isAutoUpgrade)
+            if (!isAutoUpgrade)
             {
                 var result = Frontend.ShowMessageBox(
                     Strings.InstallChecker_VersionDifferentThanInstalled,
@@ -365,47 +370,79 @@ namespace Bloxstrap
                     return;
             }
 
+            App.Logger.WriteLine(LOG_IDENT, "Doing upgrade");
+
             Filesystem.AssertReadOnly(Paths.Application);
 
-            // TODO: make this use a mutex somehow
-            // yes, this is EXTREMELY hacky, but the updater process that launched the
-            // new version may still be open and so we have to wait for it to close
-            int attempts = 0;
-            while (attempts < 10)
+            using (var ipl = new InterProcessLock("AutoUpdater", TimeSpan.FromSeconds(5)))
             {
-                attempts++;
-
-                try
+                if (!ipl.IsAcquired)
                 {
-                    File.Delete(Paths.Application);
-                    break;
-                }
-                catch (Exception)
-                {
-                    if (attempts == 1)
-                        App.Logger.WriteLine(LOG_IDENT, "Waiting for write permissions to update version");
-
-                    Thread.Sleep(500);
+                    App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not obtain singleton mutex)");
+                    return;
                 }
             }
 
-            if (attempts == 10)
+            try
             {
-                App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not get write permissions after 5 seconds)");
+                File.Copy(Paths.Process, Paths.Application, true);
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not replace executable)");
+                App.Logger.WriteException(LOG_IDENT, ex);
                 return;
             }
-
-            File.Copy(Paths.Process, Paths.Application);
 
             using (var uninstallKey = Registry.CurrentUser.CreateSubKey(App.UninstallKey))
             {
                 uninstallKey.SetValue("DisplayVersion", App.Version);
+
+                uninstallKey.SetValue("Publisher", App.ProjectOwner);
+                uninstallKey.SetValue("HelpLink", App.ProjectHelpLink);
+                uninstallKey.SetValue("URLInfoAbout", App.ProjectSupportLink);
+                uninstallKey.SetValue("URLUpdateInfo", App.ProjectDownloadLink);
             }
 
             // update migrations
 
             if (existingVer is not null)
             {
+                if (Utilities.CompareVersions(existingVer, "2.2.0") == VersionComparison.LessThan)
+                {
+                    string path = Path.Combine(Paths.Integrations, "rbxfpsunlocker");
+
+                    try
+                    {
+                        if (Directory.Exists(path))
+                            Directory.Delete(path, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                    }
+                }
+
+                if (Utilities.CompareVersions(existingVer, "2.3.0") == VersionComparison.LessThan)
+                {
+                    string injectorLocation = Path.Combine(Paths.Modifications, "dxgi.dll");
+                    string configLocation = Path.Combine(Paths.Modifications, "ReShade.ini");
+
+                    if (File.Exists(injectorLocation))
+                    {
+                        Frontend.ShowMessageBox(
+                            Strings.Bootstrapper_HyperionUpdateInfo,
+                            MessageBoxImage.Warning
+                        );
+
+                        File.Delete(injectorLocation);
+                    }
+
+                    if (File.Exists(configLocation))
+                        File.Delete(configLocation);
+                }
+
+
                 if (Utilities.CompareVersions(existingVer, "2.5.0") == VersionComparison.LessThan)
                 {
                     App.FastFlags.SetValue("DFFlagDisableDPIScale", null);
@@ -418,6 +455,13 @@ namespace Bloxstrap
 
                     if (App.FastFlags.GetPreset("UI.Menu.Style.DisableV2") is not null)
                         App.FastFlags.SetPreset("UI.Menu.Style.ABTest", false);
+                }
+
+                if (Utilities.CompareVersions(existingVer, "2.5.3") == VersionComparison.LessThan)
+                {
+                    string? val = App.FastFlags.GetPreset("UI.Menu.Style.EnableV4.1");
+                    if (App.FastFlags.GetPreset("UI.Menu.Style.EnableV4.2") != val)
+                        App.FastFlags.SetPreset("UI.Menu.Style.EnableV4.2", val);
                 }
 
                 if (Utilities.CompareVersions(existingVer, "2.6.0") == VersionComparison.LessThan)
@@ -441,9 +485,7 @@ namespace Bloxstrap
 
                     _ = int.TryParse(App.FastFlags.GetPreset("Rendering.Framerate"), out int x);
                     if (x == 0)
-                    {
                         App.FastFlags.SetPreset("Rendering.Framerate", null);
-                    }
                 }
 
                 if (Utilities.CompareVersions(existingVer, "2.8.0") == VersionComparison.LessThan)
@@ -472,6 +514,18 @@ namespace Bloxstrap
 
                     ProtocolHandler.Register("roblox", "Roblox", Paths.Application, "-player \"%1\"");
                     ProtocolHandler.Register("roblox-player", "Roblox", Paths.Application, "-player \"%1\"");
+
+                    string? oldV2Val = App.FastFlags.GetValue("FFlagDisableNewIGMinDUA");
+
+                    if (oldV2Val is not null)
+                    {
+                        if (oldV2Val == "True")
+                            App.FastFlags.SetPreset("UI.Menu.Style.V2Rollout", "0");
+                        else
+                            App.FastFlags.SetPreset("UI.Menu.Style.V2Rollout", "100");
+
+                        App.FastFlags.SetValue("FFlagDisableNewIGMinDUA", null);
+                    }
                 }
 
                 App.Settings.Save();

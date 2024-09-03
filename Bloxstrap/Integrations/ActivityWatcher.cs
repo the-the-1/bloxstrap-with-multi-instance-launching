@@ -1,4 +1,6 @@
-﻿namespace Bloxstrap.Integrations
+﻿using System.Web;
+
+namespace Bloxstrap.Integrations
 {
     public class ActivityWatcher : IDisposable
     {
@@ -7,6 +9,7 @@
         private const string GameJoiningEntry = "[FLog::Output] ! Joining game";
         private const string GameJoiningPrivateServerEntry = "[FLog::GameJoinUtil] GameJoinUtil::joinGamePostPrivateServer";
         private const string GameJoiningReservedServerEntry = "[FLog::GameJoinUtil] GameJoinUtil::initiateTeleportToReservedServer";
+        private const string GameJoiningUniverseEntry = "[FLog::GameJoinLoadTime] Report game_join_loadtime:";
         private const string GameJoiningUDMUXEntry = "[FLog::Network] UDMUX Address = ";
         private const string GameJoinedEntry = "[FLog::Network] serverId:";
         private const string GameDisconnectedEntry = "[FLog::Network] Time to disconnect replication data:";
@@ -15,11 +18,11 @@
         private const string GameLeavingEntry = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
 
         private const string GameJoiningEntryPattern = @"! Joining game '([0-9a-f\-]{36})' place ([0-9]+) at ([0-9\.]+)";
+        private const string GameJoiningUniversePattern = @"universeid:([0-9]+)";
         private const string GameJoiningUDMUXPattern = @"UDMUX Address = ([0-9\.]+), Port = [0-9]+ \| RCC Server Address = ([0-9\.]+), Port = [0-9]+";
         private const string GameJoinedEntryPattern = @"serverId: ([0-9\.]+)\|[0-9]+";
         private const string GameMessageEntryPattern = @"\[BloxstrapRPC\] (.*)";
 
-        private int _gameClientPid;
         private int _logEntriesRead = 0;
         private bool _teleportMarker = false;
         private bool _reservedTeleportMarker = false;
@@ -27,6 +30,7 @@
         public event EventHandler<string>? OnLogEntry;
         public event EventHandler? OnGameJoin;
         public event EventHandler? OnGameLeave;
+        public event EventHandler? OnLogOpen;
         public event EventHandler? OnAppClose;
         public event EventHandler<Message>? OnRPCMessage;
 
@@ -37,24 +41,24 @@
 
         // these are values to use assuming the player isn't currently in a game
         // hmm... do i move this to a model?
+        public DateTime ActivityTimeJoined;
         public bool ActivityInGame = false;
         public long ActivityPlaceId = 0;
+        public long ActivityUniverseId = 0;
         public string ActivityJobId = "";
         public string ActivityMachineAddress = "";
         public bool ActivityMachineUDMUX = false;
         public bool ActivityIsTeleport = false;
+        public string ActivityLaunchData = "";
         public ServerType ActivityServerType = ServerType.Public;
+
+        public List<ActivityHistoryEntry> ActivityHistory = new();
 
         public bool IsDisposed = false;
 
-        public ActivityWatcher(int gameClientPid)
+        public async void Start()
         {
-            _gameClientPid = gameClientPid;
-        }
-
-        public async void StartWatcher()
-        {
-            const string LOG_IDENT = "ActivityWatcher::StartWatcher";
+            const string LOG_IDENT = "ActivityWatcher::Start";
 
             // okay, here's the process:
             //
@@ -84,7 +88,7 @@
             {
                 logFileInfo = new DirectoryInfo(logDirectory)
                     .GetFiles()
-                    .Where(x => x.CreationTime <= DateTime.Now)
+                    .Where(x => x.Name.Contains("Player", StringComparison.OrdinalIgnoreCase) && x.CreationTime <= DateTime.Now)
                     .OrderByDescending(x => x.CreationTime)
                     .First();
 
@@ -95,12 +99,14 @@
                 await Task.Delay(1000);
             }
 
+            OnLogOpen?.Invoke(this, EventArgs.Empty);
+
             LogLocation = logFileInfo.FullName;
             FileStream logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             App.Logger.WriteLine(LOG_IDENT, $"Opened {LogLocation}");
 
-            AutoResetEvent logUpdatedEvent = new(false);
-            FileSystemWatcher logWatcher = new()
+            var logUpdatedEvent = new AutoResetEvent(false);
+            var logWatcher = new FileSystemWatcher()
             {
                 Path = logDirectory,
                 Filter = Path.GetFileName(logFileInfo.FullName),
@@ -108,7 +114,7 @@
             };
             logWatcher.Changed += (s, e) => logUpdatedEvent.Set();
 
-            using StreamReader sr = new(logFileStream);
+            using var sr = new StreamReader(logFileStream);
 
             while (!IsDisposed)
             {
@@ -117,13 +123,24 @@
                 if (log is null)
                     logUpdatedEvent.WaitOne(250);
                 else
-                    ExamineLogEntry(log);
+                    ReadLogEntry(log);
             }
         }
 
-        private void ExamineLogEntry(string entry)
+        public string GetActivityDeeplink()
         {
-            const string LOG_IDENT = "ActivityWatcher::ExamineLogEntry";
+            string deeplink = $"roblox://experiences/start?placeId={ActivityPlaceId}&gameInstanceId={ActivityJobId}";
+
+            if (!String.IsNullOrEmpty(ActivityLaunchData))
+                deeplink += "&launchData=" + HttpUtility.UrlEncode(ActivityLaunchData);
+
+            return deeplink;
+        }
+
+        // TODO: i need to double check how this handles failed game joins (connection error, invalid permissions, etc)
+        private void ReadLogEntry(string entry)
+        {
+            const string LOG_IDENT = "ActivityWatcher::ReadLogEntry";
 
             OnLogEntry?.Invoke(this, entry);
 
@@ -141,6 +158,8 @@
 
             if (!ActivityInGame && ActivityPlaceId == 0)
             {
+                // We are not in a game, nor are in the process of joining one
+
                 if (entry.Contains(GameJoiningPrivateServerEntry))
                 {
                     // we only expect to be joining a private server if we're not already in a game
@@ -179,13 +198,28 @@
             }
             else if (!ActivityInGame && ActivityPlaceId != 0)
             {
-                if (entry.Contains(GameJoiningUDMUXEntry))
+                // We are not confirmed to be in a game, but we are in the process of joining one
+
+                if (entry.Contains(GameJoiningUniverseEntry))
+                {
+                    var match = Regex.Match(entry, GameJoiningUniversePattern);
+
+                    if (match.Groups.Count != 2)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join universe entry");
+                        App.Logger.WriteLine(LOG_IDENT, entry);
+                        return;
+                    }
+
+                    ActivityUniverseId = long.Parse(match.Groups[1].Value);
+                }
+                else if (entry.Contains(GameJoiningUDMUXEntry))
                 {
                     Match match = Regex.Match(entry, GameJoiningUDMUXPattern);
 
                     if (match.Groups.Count != 3 || match.Groups[2].Value != ActivityMachineAddress)
                     {
-                        App.Logger.WriteLine(LOG_IDENT, $"Failed to assert format for game join UDMUX entry");
+                        App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join UDMUX entry");
                         App.Logger.WriteLine(LOG_IDENT, entry);
                         return;
                     }
@@ -209,21 +243,40 @@
                     App.Logger.WriteLine(LOG_IDENT, $"Joined Game ({ActivityPlaceId}/{ActivityJobId}/{ActivityMachineAddress})");
 
                     ActivityInGame = true;
+                    ActivityTimeJoined = DateTime.Now;
+
                     OnGameJoin?.Invoke(this, new EventArgs());
                 }
             }
             else if (ActivityInGame && ActivityPlaceId != 0)
             {
+                // We are confirmed to be in a game
+
                 if (entry.Contains(GameDisconnectedEntry))
                 {
                     App.Logger.WriteLine(LOG_IDENT, $"Disconnected from Game ({ActivityPlaceId}/{ActivityJobId}/{ActivityMachineAddress})");
 
+                    // TODO: should this be including launchdata?
+                    if (ActivityServerType != ServerType.Reserved)
+                    {
+                        ActivityHistory.Insert(0, new ActivityHistoryEntry
+                        {
+                            PlaceId = ActivityPlaceId,
+                            UniverseId = ActivityUniverseId,
+                            JobId = ActivityJobId,
+                            TimeJoined = ActivityTimeJoined,
+                            TimeLeft = DateTime.Now
+                        });
+                    }
+
                     ActivityInGame = false;
                     ActivityPlaceId = 0;
+                    ActivityUniverseId = 0;
                     ActivityJobId = "";
                     ActivityMachineAddress = "";
                     ActivityMachineUDMUX = false;
                     ActivityIsTeleport = false;
+                    ActivityLaunchData = "";
                     ActivityServerType = ServerType.Public;
 
                     OnGameLeave?.Invoke(this, new EventArgs());
@@ -282,6 +335,35 @@
                         return;
                     }
 
+                    if (message.Command == "SetLaunchData")
+                    {
+                        string? data;
+
+                        try
+                        {
+                            data = message.Data.Deserialize<string>();
+                        }
+                        catch (Exception)
+                        {
+                            App.Logger.WriteLine(LOG_IDENT, "Failed to parse message! (JSON deserialization threw an exception)");
+                            return;
+                        }
+
+                        if (data is null)
+                        {
+                            App.Logger.WriteLine(LOG_IDENT, "Failed to parse message! (JSON deserialization returned null)");
+                            return;
+                        }
+
+                        if (data.Length > 200)
+                        {
+                            App.Logger.WriteLine(LOG_IDENT, "Data cannot be longer than 200 characters");
+                            return;
+                        }
+
+                        ActivityLaunchData = data;
+                    }
+
                     OnRPCMessage?.Invoke(this, message);
 
                     LastRPCRequest = DateTime.Now;
@@ -302,7 +384,7 @@
                 var ipInfo = await Http.GetJson<IPInfoResponse>($"https://ipinfo.io/{ActivityMachineAddress}/json");
 
                 if (ipInfo is null)
-                    return $"? ({Resources.Strings.ActivityTracker_LookupFailed})";
+                    return $"? ({Strings.ActivityTracker_LookupFailed})";
 
                 if (string.IsNullOrEmpty(ipInfo.Country))
                     location = "?";
@@ -312,7 +394,7 @@
                     location = $"{ipInfo.City}, {ipInfo.Region}, {ipInfo.Country}";
 
                 if (!ActivityInGame)
-                    return $"? ({Resources.Strings.ActivityTracker_LeftGame})";
+                    return $"? ({Strings.ActivityTracker_LeftGame})";
 
                 GeolocationCache[ActivityMachineAddress] = location;
 
@@ -323,7 +405,7 @@
                 App.Logger.WriteLine(LOG_IDENT, $"Failed to get server location for {ActivityMachineAddress}");
                 App.Logger.WriteException(LOG_IDENT, ex);
 
-                return $"? ({Resources.Strings.ActivityTracker_LookupFailed})";
+                return $"? ({Strings.ActivityTracker_LookupFailed})";
             }
         }
 

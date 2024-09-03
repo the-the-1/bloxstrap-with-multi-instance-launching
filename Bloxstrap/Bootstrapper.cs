@@ -1,10 +1,21 @@
-﻿using System.Windows;
+﻿// To debug the automatic updater:
+// - Uncomment the definition below
+// - Publish the executable
+// - Launch the executable (click no when it asks you to upgrade)
+// - Launch Roblox (for testing web launches, run it from the command prompt)
+// - To re-test the same executable, delete it from the installation folder
+
+// #define DEBUG_UPDATER
+
+#if DEBUG_UPDATER
+#warning "Automatic updater debugging is enabled"
+#endif
+
+using System.Windows;
 using System.Windows.Forms;
 
 using Microsoft.Win32;
 
-using Bloxstrap.Integrations;
-using Bloxstrap.Resources;
 using Bloxstrap.AppData;
 
 namespace Bloxstrap
@@ -154,9 +165,14 @@ namespace Bloxstrap
 
             await RobloxDeployment.GetInfo(RobloxDeployment.DefaultChannel);
 
-#if !DEBUG
-            if (App.Settings.Prop.CheckForUpdates)
-                await CheckForUpdates();
+#if !DEBUG || DEBUG_UPDATER
+            if (App.Settings.Prop.CheckForUpdates && !App.LaunchSettings.UpgradeFlag.Active)
+            {
+                bool updatePresent = await CheckForUpdates();
+                
+                if (updatePresent)
+                    return;
+            }
 #endif
 
             // ensure only one instance of the bootstrapper is running at the time
@@ -193,12 +209,9 @@ namespace Bloxstrap
             if (_latestVersionGuid != _versionGuid || !File.Exists(_playerLocation))
                 await InstallLatestVersion();
 
-            MigrateIntegrations();
-
             if (_installWebView2)
                 await InstallWebView2();
 
-            App.FastFlags.Save();
             await ApplyModifications();
 
             // TODO: move this to install/upgrade flow
@@ -208,13 +221,14 @@ namespace Bloxstrap
             CheckInstall();
 
             // at this point we've finished updating our configs
-            App.Settings.Save();
             App.State.Save();
 
             await mutex.ReleaseAsync();
 
             if (!App.LaunchSettings.NoLaunchFlag.Active && !_cancelFired)
-                await StartRoblox();
+                StartRoblox();
+
+            Dialog?.CloseBootstrapper();
         }
 
         private async Task CheckLatestVersion()
@@ -275,22 +289,27 @@ namespace Bloxstrap
             _versionPackageManifest = await PackageManifest.Get(_latestVersionGuid);
         }
 
-        private async Task StartRoblox()
+        private void StartRoblox()
         {
             const string LOG_IDENT = "Bootstrapper::StartRoblox";
 
             SetStatus(Strings.Bootstrapper_Status_Starting);
 
-            if (App.Settings.Prop.ForceRobloxLanguage)
+            if (_launchMode == LaunchMode.Player)
             {
-                var match = Regex.Match(_launchCommandLine, "gameLocale:([a-z_]+)", RegexOptions.CultureInvariant);
+                if (App.Settings.Prop.ForceRobloxLanguage)
+                {
+                    var match = Regex.Match(_launchCommandLine, "gameLocale:([a-z_]+)", RegexOptions.CultureInvariant);
 
-                if (match.Groups.Count == 2)
-                    _launchCommandLine = _launchCommandLine.Replace("robloxLocale:en_us", $"robloxLocale:{match.Groups[1].Value}", StringComparison.InvariantCultureIgnoreCase);
+                    if (match.Groups.Count == 2)
+                        _launchCommandLine = _launchCommandLine.Replace("robloxLocale:en_us", $"robloxLocale:{match.Groups[1].Value}", StringComparison.InvariantCultureIgnoreCase);
+                }
+
+                if (!String.IsNullOrEmpty(_launchCommandLine))
+                    _launchCommandLine += " ";
+
+                _launchCommandLine += "-isInstallerLaunch";
             }
-
-            // whether we should wait for roblox to exit to handle stuff in the background or clean up after roblox closes
-            bool shouldWait = false;
 
             var startInfo = new ProcessStartInfo()
             {
@@ -302,68 +321,44 @@ namespace Bloxstrap
             if (_launchMode == LaunchMode.StudioAuth)
             {
                 Process.Start(startInfo);
-                Dialog?.CloseBootstrapper();
                 return;
             }
 
-            // v2.2.0 - byfron will trip if we keep a process handle open for over a minute, so we're doing this now
             int gameClientPid;
-            using (Process gameClient = Process.Start(startInfo)!)
+            bool startEventSignalled;
+
+            // TODO: figure out why this is causing roblox to block for some users
+            using (var startEvent = new EventWaitHandle(false, EventResetMode.ManualReset, AppData.StartEvent))
             {
-                gameClientPid = gameClient.Id;
-            }
+                startEvent.Reset();
 
-            List<Process?> autocloseProcesses = new();
-            ActivityWatcher? activityWatcher = null;
-            DiscordRichPresence? richPresence = null;
-
-            App.Logger.WriteLine(LOG_IDENT, $"Started Roblox (PID {gameClientPid})");
-
-            using (var startEvent = new SystemEvent(AppData.StartEvent))
-            {
-                bool startEventFired = await startEvent.WaitForEvent();
-
-                startEvent.Close();
-
-                // TODO: this cannot silently exit like this
-                if (!startEventFired)
-                    return;
-            }
-
-            if (App.Settings.Prop.EnableActivityTracking && _launchMode == LaunchMode.Player)
-              App.NotifyIcon?.SetProcessId(gameClientPid);
-
-            if (App.Settings.Prop.EnableActivityTracking)
-            {
-                activityWatcher = new(gameClientPid);
-                shouldWait = true;
-
-                App.NotifyIcon?.SetActivityWatcher(activityWatcher);
-
-                if (App.Settings.Prop.UseDisableAppPatch)
+                // v2.2.0 - byfron will trip if we keep a process handle open for over a minute, so we're doing this now
+                using (var process = Process.Start(startInfo)!)
                 {
-                    activityWatcher.OnAppClose += (_, _) =>
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, "Received desktop app exit, closing Roblox");
-                        using var process = Process.GetProcessById(gameClientPid);
-                        process.CloseMainWindow();
-                    };
+                    gameClientPid = process.Id;
                 }
 
-                if (App.Settings.Prop.UseDiscordRichPresence)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Using Discord Rich Presence");
-                    richPresence = new(activityWatcher);
+                App.Logger.WriteLine(LOG_IDENT, $"Started Roblox (PID {gameClientPid}), waiting for start event");
 
-                    App.NotifyIcon?.SetRichPresenceHandler(richPresence);
-                }
+                startEventSignalled = startEvent.WaitOne(TimeSpan.FromSeconds(10));
             }
+
+            if (!startEventSignalled)
+            {
+                Frontend.ShowPlayerErrorDialog();
+                return;
+            }
+
+            App.Logger.WriteLine(LOG_IDENT, "Start event signalled");
+
+            var autoclosePids = new List<int>();
 
             // launch custom integrations now
-            foreach (CustomIntegration integration in App.Settings.Prop.CustomIntegrations)
+            foreach (var integration in App.Settings.Prop.CustomIntegrations)
             {
                 App.Logger.WriteLine(LOG_IDENT, $"Launching custom integration '{integration.Name}' ({integration.Location} {integration.LaunchArgs} - autoclose is {integration.AutoClose})");
 
+                int pid = 0;
                 try
                 {
                     var process = Process.Start(new ProcessStartInfo
@@ -372,47 +367,31 @@ namespace Bloxstrap
                         Arguments = integration.LaunchArgs.Replace("\r\n", " "),
                         WorkingDirectory = Path.GetDirectoryName(integration.Location),
                         UseShellExecute = true
-                    });
+                    })!;
 
-                    if (integration.AutoClose)
-                    {
-                        shouldWait = true;
-                        autocloseProcesses.Add(process);
-                    }
+                    pid = process.Id;
                 }
                 catch (Exception ex)
                 {
                     App.Logger.WriteLine(LOG_IDENT, $"Failed to launch integration '{integration.Name}'!");
                     App.Logger.WriteLine(LOG_IDENT, $"{ex.Message}");
                 }
+
+                if (integration.AutoClose && pid != 0)
+                    autoclosePids.Add(pid);
             }
 
-            // event fired, wait for 3 seconds then close
-            await Task.Delay(3000);
-            Dialog?.CloseBootstrapper();
+            string args = gameClientPid.ToString();
 
-            // keep bloxstrap open in the background if needed
-            if (!shouldWait)
-                return;
+            if (autoclosePids.Any())
+                args += $";{String.Join(',', autoclosePids)}";
 
-            activityWatcher?.StartWatcher();
-
-            App.Logger.WriteLine(LOG_IDENT, "Waiting for Roblox to close");
-
-            while (Utilities.GetProcessesSafe().Any(x => x.Id == gameClientPid))
-                await Task.Delay(1000);
-
-            App.Logger.WriteLine(LOG_IDENT, $"Roblox has exited");
-
-            richPresence?.Dispose();
-
-            foreach (var process in autocloseProcesses)
+            if (App.Settings.Prop.EnableActivityTracking || autoclosePids.Any())
             {
-                if (process is null || process.HasExited)
-                    continue;
+                using var ipl = new InterProcessLock("Watcher", TimeSpan.FromSeconds(5));
 
-                App.Logger.WriteLine(LOG_IDENT, $"Autoclosing process '{process.ProcessName}' (PID {process.Id})");
-                process.Kill();
+                if (ipl.IsAcquired)
+                    Process.Start(Paths.Process, $"-watcher \"{args}\"");
             }
         }
 
@@ -450,7 +429,7 @@ namespace Bloxstrap
 
             App.Terminate(ErrorCode.ERROR_CANCELLED);
         }
-        #endregion
+#endregion
 
         #region App Install
         public void RegisterProgramSize()
@@ -494,55 +473,58 @@ namespace Bloxstrap
 #endif
         }
 
-        private async Task CheckForUpdates()
+        private async Task<bool> CheckForUpdates()
         {
             const string LOG_IDENT = "Bootstrapper::CheckForUpdates";
             
             // don't update if there's another instance running (likely running in the background)
-            if (Process.GetProcessesByName(App.ProjectName).Count() > 1)
+            // i don't like this, but there isn't much better way of doing it /shrug
+            if (Process.GetProcessesByName(App.ProjectName).Length > 1)
             {
                 App.Logger.WriteLine(LOG_IDENT, $"More than one Bloxstrap instance running, aborting update check");
-                return;
+                return false;
             }
 
-            App.Logger.WriteLine(LOG_IDENT, $"Checking for updates...");
+            App.Logger.WriteLine(LOG_IDENT, "Checking for updates...");
 
-            GithubRelease? releaseInfo;
+#if !DEBUG_UPDATER
+            var releaseInfo = await App.GetLatestRelease();
 
-            try
-            {
-                releaseInfo = await Http.GetJson<GithubRelease>($"https://api.github.com/repos/{App.ProjectRepository}/releases/latest");
-            }
-            catch (Exception ex)
-            {
-                App.Logger.WriteLine(LOG_IDENT, $"Failed to fetch releases: {ex}");
-                return;
-            }
-
-            if (releaseInfo is null || releaseInfo.Assets is null)
-            {
-                App.Logger.WriteLine(LOG_IDENT, $"No updates found");
-                return;
-            }
+            if (releaseInfo is null)
+                return false;
 
             var versionComparison = Utilities.CompareVersions(App.Version, releaseInfo.TagName);
 
             App.Logger.WriteLine(LOG_IDENT, $"VersionComparison: {versionComparison}");
             
             // check if we aren't using a deployed build, so we can update to one if a new version comes out
-            if (versionComparison == VersionComparison.Equal && App.IsProductionBuild || versionComparison == VersionComparison.GreaterThan)
+            if (App.IsProductionBuild && versionComparison == VersionComparison.Equal || versionComparison == VersionComparison.GreaterThan)
             {
-                App.Logger.WriteLine(LOG_IDENT, $"No updates found");
-                return;
+                App.Logger.WriteLine(LOG_IDENT, "No updates found");
+                return false;
             }
 
+            string version = releaseInfo.TagName;
+#else
+            string version = App.Version;
+#endif
+
             SetStatus(Strings.Bootstrapper_Status_UpgradingBloxstrap);
-            
+
             try
             {
-                // 64-bit is always the first option
-                GithubReleaseAsset asset = releaseInfo.Assets[0];
-                string downloadLocation = Path.Combine(Paths.LocalAppData, "Temp", asset.Name);
+#if DEBUG_UPDATER
+                string downloadLocation = Path.Combine(Paths.TempUpdates, "Bloxstrap.exe");
+
+                Directory.CreateDirectory(Paths.TempUpdates);
+
+                File.Copy(Paths.Process, downloadLocation, true);
+#else
+                var asset = releaseInfo.Assets![0];
+
+                string downloadLocation = Path.Combine(Paths.TempUpdates, asset.Name);
+
+                Directory.CreateDirectory(Paths.TempUpdates);
 
                 App.Logger.WriteLine(LOG_IDENT, $"Downloading {releaseInfo.TagName}...");
                 
@@ -550,25 +532,35 @@ namespace Bloxstrap
                 {
                     var response = await App.HttpClient.GetAsync(asset.BrowserDownloadUrl);
 
-                    await using var fileStream = new FileStream(downloadLocation, FileMode.CreateNew);
+                    await using var fileStream = new FileStream(downloadLocation, FileMode.OpenOrCreate, FileAccess.Write);
                     await response.Content.CopyToAsync(fileStream);
                 }
+#endif
 
-                App.Logger.WriteLine(LOG_IDENT, $"Starting {releaseInfo.TagName}...");
+                App.Logger.WriteLine(LOG_IDENT, $"Starting {version}...");
 
                 ProcessStartInfo startInfo = new()
                 {
                     FileName = downloadLocation,
                 };
 
+                startInfo.ArgumentList.Add("-upgrade");
+
                 foreach (string arg in App.LaunchSettings.Args)
                     startInfo.ArgumentList.Add(arg);
-                
+
+                if (_launchMode == LaunchMode.Player && !startInfo.ArgumentList.Contains("-player"))
+                    startInfo.ArgumentList.Add("-player");
+                else if (_launchMode == LaunchMode.Studio && !startInfo.ArgumentList.Contains("-studio"))
+                    startInfo.ArgumentList.Add("-studio");
+
                 App.Settings.Save();
+
+                new InterProcessLock("AutoUpdater");
                 
                 Process.Start(startInfo);
 
-                App.Terminate();
+                return true;
             }
             catch (Exception ex)
             {
@@ -576,10 +568,14 @@ namespace Bloxstrap
                 App.Logger.WriteException(LOG_IDENT, ex);
 
                 Frontend.ShowMessageBox(
-                    string.Format(Strings.Bootstrapper_AutoUpdateFailed, releaseInfo.TagName),
+                    string.Format(Strings.Bootstrapper_AutoUpdateFailed, version),
                     MessageBoxImage.Information
                 );
+
+                Utilities.ShellExecute(App.ProjectDownloadLink);
             }
+
+            return false;
         }
 #endregion
 
@@ -778,32 +774,6 @@ namespace Bloxstrap
             App.Logger.WriteLine(LOG_IDENT, "Finished installing runtime");
         }
 
-        public static void MigrateIntegrations()
-        {
-            // v2.2.0 - remove rbxfpsunlocker
-            string rbxfpsunlocker = Path.Combine(Paths.Integrations, "rbxfpsunlocker");
-
-            if (Directory.Exists(rbxfpsunlocker))
-                Directory.Delete(rbxfpsunlocker, true);
-
-            // v2.3.0 - remove reshade
-            string injectorLocation = Path.Combine(Paths.Modifications, "dxgi.dll");
-            string configLocation = Path.Combine(Paths.Modifications, "ReShade.ini");
-
-            if (File.Exists(injectorLocation))
-            {
-                Frontend.ShowMessageBox(
-                    Strings.Bootstrapper_HyperionUpdateInfo,
-                    MessageBoxImage.Warning
-                );
-
-                File.Delete(injectorLocation);
-            }
-
-            if (File.Exists(configLocation))
-                File.Delete(configLocation);
-        }
-
         private async Task ApplyModifications()
         {
             const string LOG_IDENT = "Bootstrapper::ApplyModifications";
@@ -898,6 +868,7 @@ namespace Bloxstrap
                     foreach (FontFace fontFace in fontFamilyData.Faces)
                         fontFace.AssetId = "rbxasset://fonts/CustomFont.ttf";
 
+                    // TODO: writing on every launch is not necessary
                     File.WriteAllText(modFilepath, JsonSerializer.Serialize(fontFamilyData, new JsonSerializerOptions { WriteIndented = true }));
                 }
 
@@ -949,6 +920,8 @@ namespace Bloxstrap
             // the manifest is primarily here to keep track of what files have been
             // deleted from the modifications folder, so that we know when to restore the original files from the downloaded packages
             // now check for files that have been deleted from the mod folder according to the manifest
+
+            // TODO: this needs to extract the files from packages in bulk, this is way too slow
             foreach (string fileLocation in App.State.Prop.ModManifest)
             {
                 if (modFolderFiles.Contains(fileLocation))
