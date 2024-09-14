@@ -26,7 +26,7 @@ namespace Bloxstrap.UI
 
             _watcher = watcher;
 
-            _notifyIcon = new()
+            _notifyIcon = new(new System.ComponentModel.Container())
             {
                 Icon = Properties.Resources.IconBloxstrap,
                 Text = App.ProjectName,
@@ -35,7 +35,7 @@ namespace Bloxstrap.UI
 
             _notifyIcon.MouseClick += MouseClickEventHandler;
 
-            if (_activityWatcher is not null)
+            if (_activityWatcher is not null && App.Settings.Prop.ShowServerDetails)
                 _activityWatcher.OnGameJoin += OnGameJoin;
 
             _menuContainer = new(_watcher);
@@ -59,8 +59,12 @@ namespace Bloxstrap.UI
             if (_activityWatcher is null)
                 return;
             
-            string serverLocation = await _activityWatcher.GetServerLocation();
-            string title = _activityWatcher.ActivityServerType switch
+            string serverLocation = await _activityWatcher.Data.QueryServerLocation();
+
+            if (string.IsNullOrEmpty(serverLocation))
+                return;
+
+            string title = _activityWatcher.Data.ServerType switch
             {
                 ServerType.Public => Strings.ContextMenu_ServerInformation_Notification_Title_Public,
                 ServerType.Private => Strings.ContextMenu_ServerInformation_Notification_Title_Private,
@@ -77,6 +81,7 @@ namespace Bloxstrap.UI
         }
         #endregion
 
+        // we may need to create our own handler for this, because this sorta sucks
         public void ShowAlert(string caption, string message, int duration, EventHandler? clickHandler)
         {
             string id = Guid.NewGuid().ToString()[..8];

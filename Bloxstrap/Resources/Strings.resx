@@ -117,12 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="ActivityTracker.LeftGame" xml:space="preserve">
-    <value>left game</value>
-  </data>
-  <data name="ActivityTracker.LookupFailed" xml:space="preserve">
-    <value>lookup failed</value>
-  </data>
   <data name="Bootstrapper.AutoUpdateFailed" xml:space="preserve">
     <value>Bloxstrap was unable to automatically update to version {0}. Please update it manually by downloading and running it from the website.</value>
   </data>
@@ -132,14 +126,14 @@
   <data name="Bootstrapper.ConfirmLaunch.MultiInstanceEnabled" xml:space="preserve">
     <value>Roblox is currently running, are you sure you want to launch another instance?</value>
   </data>
-  <data name="Bootstrapper.Connectivity.Preventing" xml:space="preserve">
-    <value>It's possible that something is preventing Bloxstrap from connecting to the internet. Please check and try again.</value>
+  <data name="Dialog.Connectivity.Preventing" xml:space="preserve">
+    <value>Something is likely preventing Bloxstrap from connecting to the internet.</value>
   </data>
-  <data name="Bootstrapper.Connectivity.RobloxDown" xml:space="preserve">
-    <value>Roblox may be down right now. See status.roblox.com for more information. Please try again later.</value>
+  <data name="Dialog.Connectivity.RobloxDown" xml:space="preserve">
+    <value>Roblox may be down right now. See {0} for more information.</value>
   </data>
-  <data name="Bootstrapper.Connectivity.TimedOut" xml:space="preserve">
-    <value>Bloxstrap timed out when trying to connect to three different Roblox deployment mirrors, indicating a poor internet connection. Please try again later.</value>
+  <data name="Dialog.Connectivity.TimedOut" xml:space="preserve">
+    <value>The connection timed out, which could indicate a poor internet connection or a firewall block.</value>
   </data>
   <data name="Bootstrapper.EmojiPresetFetchFailed" xml:space="preserve">
     <value>Could not apply the {0} emoji mod preset because of a network error. To try again, please reconfigure the option in the Bloxstrap Menu.</value>
@@ -277,9 +271,6 @@ Your ReShade configuration files will still be saved, and you can locate them by
   <data name="ContextMenu.ServerInformation.InstanceId" xml:space="preserve">
     <value>Instance ID</value>
   </data>
-  <data name="ContextMenu.ServerInformation.Loading" xml:space="preserve">
-    <value>Loading, please wait...</value>
-  </data>
   <data name="ContextMenu.ServerInformation.Location" xml:space="preserve">
     <value>Location</value>
   </data>
@@ -306,7 +297,7 @@ Click for more information</value>
     <value>Connectivity error</value>
   </data>
   <data name="Dialog.Connectivity.UnableToConnect" xml:space="preserve">
-    <value>Bloxstrap is unable to connect to Roblox</value>
+    <value>Bloxstrap is unable to connect to {0}</value>
   </data>
   <data name="Dialog.Exception.CopyLogContents" xml:space="preserve">
     <value>Copy log contents</value>
@@ -401,13 +392,13 @@ If not, then please report this exception through a [GitHub issue]({1}) along wi
     <value>Direct3D 11</value>
   </data>
   <data name="Enums.ServerType.Private" xml:space="preserve">
-    <value>Private</value>
+    <value>Private server</value>
   </data>
   <data name="Enums.ServerType.Public" xml:space="preserve">
-    <value>Public</value>
+    <value>Public server</value>
   </data>
   <data name="Enums.ServerType.Reserved" xml:space="preserve">
-    <value>Reserved</value>
+    <value>Reserved server</value>
   </data>
   <data name="Enums.Theme.Dark" xml:space="preserve">
     <value>Dark</value>
@@ -649,12 +640,6 @@ Do NOT use this to import large "flag lists" made by other people that promise t
     <value>Learn more about Fast Flags, what these presets do, and how to use them.</value>
     <comment>Title is Common.Help</comment>
   </data>
-  <data name="Menu.FastFlags.Presets.AltGraphicsSelector.Description" xml:space="preserve">
-    <value>Allows you to configure 21 different quality levels instead of 10.</value>
-  </data>
-  <data name="Menu.FastFlags.Presets.AltGraphicsSelector.Title" xml:space="preserve">
-    <value>Use advanced graphics quality selector</value>
-  </data>
   <data name="Menu.FastFlags.Presets.D3DExclusiveFullscreenInfo" xml:space="preserve">
     <value>Direct3D [exclusive fullscreen]({0}) using Alt+Enter is enabled by default.</value>
   </data>
@@ -764,7 +749,7 @@ Selecting 'No' will ignore this warning and continue installation.</value>
     <value>Enable activity tracking</value>
   </data>
   <data name="Menu.Integrations.RequiresActivityTracking" xml:space="preserve">
-    <value>This feature requires activity tracking to be enabled and the Discord desktop app to be installed and running.</value>
+    <value>This feature requires activity tracking to be enabled and the Discord desktop app to be installed and running. [Find out more]({0}).</value>
   </data>
   <data name="Menu.Integrations.ShowGameActivity.Description" xml:space="preserve">
     <value>The Roblox game you're playing will be shown on your Discord profile. [Not working?]({0})</value>
@@ -772,11 +757,11 @@ Selecting 'No' will ignore this warning and continue installation.</value>
   <data name="Menu.Integrations.ShowGameActivity.Title" xml:space="preserve">
     <value>Show game activity</value>
   </data>
-  <data name="Menu.Integrations.ShowServerDetails.Description" xml:space="preserve">
-    <value>When you join a game, you'll be notified of where your server's located. Won't show in fullscreen.</value>
+  <data name="Menu.Integrations.QueryServerLocation.Description" xml:space="preserve">
+    <value>When in-game, you'll be able to see where your server is located via [ipinfo.io]({0}).</value>
   </data>
-  <data name="Menu.Integrations.ShowServerDetails.Title" xml:space="preserve">
-    <value>See server location when joining a game</value>
+  <data name="Menu.Integrations.QueryServerLocation.Title" xml:space="preserve">
+    <value>Query server location</value>
   </data>
   <data name="Menu.Integrations.Title" xml:space="preserve">
     <value>Integrations</value>
@@ -1191,5 +1176,31 @@ Are you sure you want to continue?</value>
   </data>
   <data name="ContextMenu.GameHistory.Rejoin" xml:space="preserve">
     <value>Rejoin</value>
+  </data>
+  <data name="ActivityWatcher.RichPresenceLoadFailed" xml:space="preserve">
+    <value>Your current game will not show on your Discord presence because an error occurred when loading the game information.</value>
+  </data>
+  <data name="ContextMenu.GameHistory.Description" xml:space="preserve">
+    <value>Game history is only recorded for your current Roblox session. Games will appear here as you leave them or teleport within them.</value>
+  </data>
+  <data name="ActivityWatcher.LocationQueryFailed" xml:space="preserve">
+    <value>Failed to query server location.</value>
+  </data>
+  <data name="Dialog.Connectivity.ServiceDown" xml:space="preserve">
+    <value>{0} may be down right now.</value>
+  </data>
+  <data name="Dialog.Connectivity.TryAgainLater" xml:space="preserve">
+    <value>Please try again later.</value>
+  </data>
+  <data name="Dialog.Connectivity.RobloxUpgradeSkip" xml:space="preserve">
+    <value>For this launch, Roblox will not be checked for upgrades, and changes to mods will not be applied.</value>
+  </data>
+  <data name="Dialog.Connectivity.RobloxUpgradeNeeded" xml:space="preserve">
+    <value>Because Roblox needs to be installed or upgraded, Bloxstrap cannot continue.</value>
+  </data>
+  <data name="Installer.Install.CannotOverwrite" xml:space="preserve">
+    <value>Bloxstrap has been installed to this location before and is still present, however the installer cannot overwrite the old executable. 
+
+Please manually delete Bloxstrap.exe from the install location or try restarting your system, and then retry installation afterwards.</value>
   </data>
 </root>

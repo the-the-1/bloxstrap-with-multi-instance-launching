@@ -1,6 +1,5 @@
 ﻿using System.Windows;
 
-using Microsoft.Win32;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -43,6 +42,8 @@ namespace Bloxstrap
                 LaunchRoblox();
             else if (!App.LaunchSettings.QuietFlag.Active)
                 LaunchMenu();
+            else
+                App.Terminate();
         }
 
         public static void LaunchInstaller()
@@ -52,6 +53,7 @@ namespace Bloxstrap
             if (!interlock.IsAcquired)
             {
                 Frontend.ShowMessageBox(Strings.Dialog_AlreadyRunning_Installer, MessageBoxImage.Stop);
+                App.Terminate();
                 return;
             }
 
@@ -96,6 +98,7 @@ namespace Bloxstrap
             if (!interlock.IsAcquired)
             {
                 Frontend.ShowMessageBox(Strings.Dialog_AlreadyRunning_Uninstaller, MessageBoxImage.Stop);
+                App.Terminate();
                 return;
             }
 
@@ -116,7 +119,10 @@ namespace Bloxstrap
             }
 
             if (!confirmed)
+            {
+                App.Terminate();
                 return;
+            }
 
             Installer.DoUninstall(keepData);
 
@@ -169,18 +175,24 @@ namespace Bloxstrap
                 App.Terminate(ErrorCode.ERROR_FILE_NOT_FOUND);
             }
 
-            bool installWebView2 = false;
+            if (App.Settings.Prop.ConfirmLaunches && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
             {
-                using var hklmKey = Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}");
-                using var hkcuKey = Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}");
+                // this currently doesn't work very well since it relies on checking the existence of the singleton mutex
+                // which often hangs around for a few seconds after the window closes
+                // it would be better to have this rely on the activity tracker when we implement IPC in the planned refactoring
 
-                if (hklmKey is null && hkcuKey is null)
-                    installWebView2 = Frontend.ShowMessageBox(Strings.Bootstrapper_WebView2NotFound, MessageBoxImage.Warning, MessageBoxButton.YesNo, MessageBoxResult.Yes) == MessageBoxResult.Yes;
+                var result = Frontend.ShowMessageBox(App.Settings.Prop.MultiInstanceLaunching ? Strings.Bootstrapper_ConfirmLaunch_MultiInstanceEnabled : Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    App.Terminate();
+                    return;
+                }
             }
 
             // start bootstrapper and show the bootstrapper modal if we're not running silently
             App.Logger.WriteLine(LOG_IDENT, "Initializing bootstrapper");
-            var bootstrapper = new Bootstrapper(installWebView2);
+            var bootstrapper = new Bootstrapper();
             IBootstrapperDialog? dialog = null;
 
             if (!App.LaunchSettings.QuietFlag.Active)
@@ -189,6 +201,74 @@ namespace Bloxstrap
                 dialog = App.Settings.Prop.BootstrapperStyle.GetNew();
                 bootstrapper.Dialog = dialog;
                 dialog.Bootstrapper = bootstrapper;
+            }
+
+            Mutex? singletonMutex = null;
+
+            if (App.Settings.Prop.MultiInstanceLaunching)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Attempting to create singleton mutex...");
+                try
+                {
+                    Mutex.OpenExisting("ROBLOX_singletonMutex");
+                    App.Logger.WriteLine(LOG_IDENT, "Singleton mutex already exists.");
+                }
+                catch
+                {
+                    // create the singleton mutex before the game client does
+                    singletonMutex = new Mutex(true, "ROBLOX_singletonMutex");
+                    App.Logger.WriteLine(LOG_IDENT, "Created singleton mutex.");
+                }
+            }
+
+            string CookiesFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Roblox\LocalStorage\RobloxCookies.dat");
+
+            if (File.Exists(CookiesFilePath))
+            {
+                FileAttributes attributes = File.GetAttributes(CookiesFilePath);
+                
+                if (App.Settings.Prop.FixTeleports)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, "Attempting to apply teleport fix...");
+
+                    if (!attributes.HasFlag(FileAttributes.ReadOnly))
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is writable, applying teleport fix...");
+
+                        try
+                        {
+                            FileStream fileStream = File.Open(CookiesFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                            fileStream.SetLength(0);
+                            fileStream.Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            App.Logger.WriteLine(LOG_IDENT, $"Failed to clear contents of RobloxCookies.dat | Exception: {ex}");
+                        }
+
+                        File.SetAttributes(CookiesFilePath, FileAttributes.ReadOnly);
+                        App.Logger.WriteLine(LOG_IDENT, $"Successfully applied teleport fix.");
+                    }
+                    else
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is already read-only, skipping teleport fix.");
+                    }
+                }
+                else
+                {
+                    App.Logger.WriteLine(LOG_IDENT, "Attempting to remove teleport fix...");
+
+                    if (attributes.HasFlag(FileAttributes.ReadOnly))
+                    {
+                        File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
+                        App.Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (1)");
+                    }
+                }
+            }
+            else
+            {
+                App.Logger.WriteLine(LOG_IDENT, $"Failed to find RobloxCookies.dat");
+                Frontend.ShowMessageBox($"Failed to find RobloxCookies.dat | Path: {CookiesFilePath}", MessageBoxImage.Error);
             }
 
             Task.Run(bootstrapper.Run).ContinueWith(t =>
@@ -201,6 +281,29 @@ namespace Bloxstrap
 
                     if (t.Exception is not null)
                         App.FinalizeExceptionHandling(t.Exception);
+                } else if (singletonMutex is not null) {
+                    App.Logger.WriteLine(LOG_IDENT, "We have singleton mutex ownership! Running in background until all Roblox processes are closed");
+
+                    // we've got ownership of the roblox singleton mutex!
+                    // if we stop running, everything will screw up once any more roblox instances launched
+                    while (Process.GetProcessesByName("RobloxPlayerBeta").Any())
+                    {
+                        Thread.Sleep(1000);
+                    };
+
+                    App.Logger.WriteLine(LOG_IDENT, "All Roblox processes closed!");
+
+                    if (File.Exists(CookiesFilePath))
+                    {
+                        FileAttributes attributes = File.GetAttributes(CookiesFilePath);
+
+                        if (attributes.HasFlag(FileAttributes.ReadOnly))
+                        {
+                            File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
+                            App.Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (2)");
+                        }
+                    }
+
                 }
 
                 App.Terminate();

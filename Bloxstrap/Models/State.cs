@@ -3,14 +3,12 @@
     public class State
     {
         public bool ShowFFlagEditorWarning { get; set; } = true;
+        
+        public bool PromptWebView2Install { get; set; } = true;
 
-        [Obsolete("Use PlayerVersionGuid instead", true)]
-        public string VersionGuid { set { PlayerVersionGuid = value; } }
-        public string PlayerVersionGuid { get; set; } = "";
-        public string StudioVersionGuid { get; set; } = "";
-
-        public int PlayerSize { get; set; } = 0;
-        public int StudioSize { get; set; } = 0;
+        public AppState Player { get; set; } = new();
+        
+        public AppState Studio { get; set; } = new();
 
         public List<string> ModManifest { get; set; } = new();
     }
