@@ -17,6 +17,8 @@ namespace Bloxstrap
 
         public bool CreateStartMenuShortcuts = true;
 
+        public bool EnableAnalytics = true;
+
         public bool IsImplicitInstall = false;
 
         public string InstallLocationError { get; set; } = "";
@@ -53,23 +55,23 @@ namespace Bloxstrap
             // TODO: registry access checks, i'll need to look back on issues to see what the error looks like
             using (var uninstallKey = Registry.CurrentUser.CreateSubKey(App.UninstallKey))
             {
-                uninstallKey.SetValue("DisplayIcon", $"{Paths.Application},0");
-                uninstallKey.SetValue("DisplayName", App.ProjectName);
+                uninstallKey.SetValueSafe("DisplayIcon", $"{Paths.Application},0");
+                uninstallKey.SetValueSafe("DisplayName", App.ProjectName);
 
-                uninstallKey.SetValue("DisplayVersion", App.Version);
+                uninstallKey.SetValueSafe("DisplayVersion", App.Version);
 
                 if (uninstallKey.GetValue("InstallDate") is null)
-                    uninstallKey.SetValue("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
+                    uninstallKey.SetValueSafe("InstallDate", DateTime.Now.ToString("yyyyMMdd"));
 
-                uninstallKey.SetValue("InstallLocation", Paths.Base);
-                uninstallKey.SetValue("NoRepair", 1);
-                uninstallKey.SetValue("Publisher", App.ProjectOwner);
-                uninstallKey.SetValue("ModifyPath", $"\"{Paths.Application}\" -settings");
-                uninstallKey.SetValue("QuietUninstallString", $"\"{Paths.Application}\" -uninstall -quiet");
-                uninstallKey.SetValue("UninstallString", $"\"{Paths.Application}\" -uninstall");
-                uninstallKey.SetValue("HelpLink", App.ProjectHelpLink);
-                uninstallKey.SetValue("URLInfoAbout", App.ProjectSupportLink);
-                uninstallKey.SetValue("URLUpdateInfo", App.ProjectDownloadLink);
+                uninstallKey.SetValueSafe("InstallLocation", Paths.Base);
+                uninstallKey.SetValueSafe("NoRepair", 1);
+                uninstallKey.SetValueSafe("Publisher", App.ProjectOwner);
+                uninstallKey.SetValueSafe("ModifyPath", $"\"{Paths.Application}\" -settings");
+                uninstallKey.SetValueSafe("QuietUninstallString", $"\"{Paths.Application}\" -uninstall -quiet");
+                uninstallKey.SetValueSafe("UninstallString", $"\"{Paths.Application}\" -uninstall");
+                uninstallKey.SetValueSafe("HelpLink", App.ProjectHelpLink);
+                uninstallKey.SetValueSafe("URLInfoAbout", App.ProjectSupportLink);
+                uninstallKey.SetValueSafe("URLUpdateInfo", App.ProjectDownloadLink);
             }
 
             // only register player, for the scenario where the user installs bloxstrap, closes it,
@@ -88,10 +90,17 @@ namespace Bloxstrap
             App.State.Load(false);
             App.FastFlags.Load(false);
 
+            App.Settings.Prop.EnableAnalytics = EnableAnalytics;
+
             if (!String.IsNullOrEmpty(App.State.Prop.Studio.VersionGuid))
                 WindowsRegistry.RegisterStudio();
 
+            App.Settings.Save();
+
             App.Logger.WriteLine(LOG_IDENT, "Installation finished");
+
+            if (!IsImplicitInstall)
+                App.SendStat("installAction", "install");
         }
 
         private bool ValidateLocation()
@@ -102,6 +111,10 @@ namespace Bloxstrap
 
             // unc path, just to be safe
             if (InstallLocation.StartsWith("\\\\"))
+                return false;
+
+            if (InstallLocation.StartsWith(Path.GetTempPath(), StringComparison.InvariantCultureIgnoreCase)
+                || InstallLocation.Contains("\\Temp\\", StringComparison.InvariantCultureIgnoreCase))
                 return false;
 
             // prevent from installing to a onedrive folder
@@ -336,6 +349,8 @@ namespace Bloxstrap
                     WindowStyle = ProcessWindowStyle.Hidden
                 });
             }
+
+            App.SendStat("installAction", "uninstall");
         }
 
         public static void HandleUpgrade()
@@ -394,25 +409,40 @@ namespace Bloxstrap
                 }
             }
 
-            try
+            // prior to 2.8.0, auto-updating was handled with this... bruteforce method
+            // now it's handled with the system mutex you see above, but we need to keep this logic for <2.8.0 versions
+            for (int i = 1; i <= 10; i++)
             {
-                File.Copy(Paths.Process, Paths.Application, true);
-            }
-            catch (Exception ex)
-            {
-                App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not replace executable)");
-                App.Logger.WriteException(LOG_IDENT, ex);
-                return;
+                try
+                {
+                    File.Copy(Paths.Process, Paths.Application, true);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (i == 1)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, "Waiting for write permissions to update version");
+                    }
+                    else if (i == 10)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not get write permissions after 10 tries/5 seconds)");
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                        return;
+                    }
+
+                    Thread.Sleep(500);
+                }
             }
 
             using (var uninstallKey = Registry.CurrentUser.CreateSubKey(App.UninstallKey))
             {
-                uninstallKey.SetValue("DisplayVersion", App.Version);
+                uninstallKey.SetValueSafe("DisplayVersion", App.Version);
 
-                uninstallKey.SetValue("Publisher", App.ProjectOwner);
-                uninstallKey.SetValue("HelpLink", App.ProjectHelpLink);
-                uninstallKey.SetValue("URLInfoAbout", App.ProjectSupportLink);
-                uninstallKey.SetValue("URLUpdateInfo", App.ProjectDownloadLink);
+                uninstallKey.SetValueSafe("Publisher", App.ProjectOwner);
+                uninstallKey.SetValueSafe("HelpLink", App.ProjectHelpLink);
+                uninstallKey.SetValueSafe("URLInfoAbout", App.ProjectSupportLink);
+                uninstallKey.SetValueSafe("URLUpdateInfo", App.ProjectDownloadLink);
             }
 
             // update migrations
@@ -440,14 +470,7 @@ namespace Bloxstrap
                     string configLocation = Path.Combine(Paths.Modifications, "ReShade.ini");
 
                     if (File.Exists(injectorLocation))
-                    {
-                        Frontend.ShowMessageBox(
-                            Strings.Bootstrapper_HyperionUpdateInfo,
-                            MessageBoxImage.Warning
-                        );
-
                         File.Delete(injectorLocation);
-                    }
 
                     if (File.Exists(configLocation))
                         File.Delete(configLocation);
@@ -530,9 +553,16 @@ namespace Bloxstrap
                     if (oldV2Val is not null)
                     {
                         if (oldV2Val == "True")
+                        {
                             App.FastFlags.SetPreset("UI.Menu.Style.V2Rollout", "0");
+
+                            if (App.FastFlags.GetValue("UI.Menu.Style.EnableV4.1") == "False")
+                                App.FastFlags.SetPreset("UI.Menu.Style.ReportButtonCutOff", "False");
+                        }
                         else
+                        {
                             App.FastFlags.SetPreset("UI.Menu.Style.V2Rollout", "100");
+                        }
 
                         App.FastFlags.SetValue("FFlagDisableNewIGMinDUA", null);
                     }
@@ -548,6 +578,8 @@ namespace Bloxstrap
 
             if (currentVer is null)
                 return;
+
+            App.SendStat("installAction", "upgrade");
 
             if (isAutoUpgrade)
             {

@@ -1,4 +1,5 @@
-﻿using Bloxstrap.Models.SettingTasks.Base;
+﻿using Bloxstrap.Models.Entities;
+using Bloxstrap.Models.SettingTasks.Base;
 
 namespace Bloxstrap.Models.SettingTasks
 {
@@ -41,7 +42,7 @@ namespace Bloxstrap.Models.SettingTasks
 
                     using var resourceStream = data.ResourceStream;
                     using var memoryStream = new MemoryStream();
-                    data.ResourceStream.CopyTo(memoryStream);
+                    resourceStream.CopyTo(memoryStream);
 
                     Filesystem.AssertReadOnly(data.FullFilePath);
                     File.WriteAllBytes(data.FullFilePath, memoryStream.ToArray());

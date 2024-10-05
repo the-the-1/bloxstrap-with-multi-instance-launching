@@ -2,16 +2,11 @@
 using System.Windows.Controls;
 using System.Windows.Interop;
 
-using Wpf.Ui.Appearance;
-using Wpf.Ui.Mvvm.Contracts;
-using Wpf.Ui.Mvvm.Services;
-
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 using Bloxstrap.Integrations;
-using Bloxstrap.Resources;
 
 namespace Bloxstrap.UI.Elements.ContextMenu
 {
@@ -41,6 +36,9 @@ namespace Bloxstrap.UI.Elements.ContextMenu
                 _activityWatcher.OnLogOpen += ActivityWatcher_OnLogOpen;
                 _activityWatcher.OnGameJoin += ActivityWatcher_OnGameJoin;
                 _activityWatcher.OnGameLeave += ActivityWatcher_OnGameLeave;
+
+                if (!App.Settings.Prop.UseDisableAppPatch)
+                    GameHistoryMenuItem.Visibility = Visibility.Visible;
             }
 
             if (_watcher.RichPresence is not null)

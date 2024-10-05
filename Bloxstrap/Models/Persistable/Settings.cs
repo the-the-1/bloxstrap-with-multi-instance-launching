@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace Bloxstrap.Models
+namespace Bloxstrap.Models.Persistable
 {
     public class Settings
     {
@@ -17,11 +17,14 @@ namespace Bloxstrap.Models
         public string Locale { get; set; } = "nil";
         public bool ForceRobloxLanguage { get; set; } = false;
         public bool UseFastFlagManager { get; set; } = true;
+        public bool WPFSoftwareRender { get; set; } = false;
+        public bool EnableAnalytics { get; set; } = true;
 
         // integration configuration
         public bool EnableActivityTracking { get; set; } = true;
         public bool UseDiscordRichPresence { get; set; } = true;
         public bool HideRPCButtons { get; set; } = true;
+        public bool ShowAccountOnRichPresence { get; set; } = false;
         public bool ShowServerDetails { get; set; } = false;
         public ObservableCollection<CustomIntegration> CustomIntegrations { get; set; } = new();
 

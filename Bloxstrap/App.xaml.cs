@@ -65,6 +65,15 @@ namespace Bloxstrap
             Environment.Exit(exitCodeNum);
         }
 
+        public static void SoftTerminate(ErrorCode exitCode = ErrorCode.ERROR_SUCCESS)
+        {
+            int exitCodeNum = (int)exitCode;
+
+            Logger.WriteLine("App::SoftTerminate", $"Terminating with exit code {exitCodeNum} ({exitCode})");
+
+            Current.Dispatcher.Invoke(() => Current.Shutdown(exitCodeNum));
+        }
+
         void GlobalExceptionHandler(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             e.Handled = true;
@@ -121,6 +130,21 @@ namespace Bloxstrap
             return null;
         }
 
+        public static async void SendStat(string key, string value)
+        {
+            if (!Settings.Prop.EnableAnalytics)
+                return;
+
+            try
+            {
+                await HttpClient.GetAsync($"https://bloxstraplabs.com/metrics/post?key={key}&value={value}");
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteException("App::SendStat", ex);
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             const string LOG_IDENT = "App::OnStartup";
@@ -131,19 +155,33 @@ namespace Bloxstrap
 
             Logger.WriteLine(LOG_IDENT, $"Starting {ProjectName} v{Version}");
 
+            string userAgent = $"{ProjectName}/{Version}";
+
             if (IsActionBuild)
+            {
                 Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from commit {BuildMetadata.CommitHash} ({BuildMetadata.CommitRef})");
+
+                if (IsProductionBuild)
+                    userAgent += $" (Production)";
+                else
+                    userAgent += $" (Artifact {BuildMetadata.CommitHash}, {BuildMetadata.CommitRef})";
+            }
             else
+            {
                 Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from {BuildMetadata.Machine}");
+                userAgent += $" (Build {BuildMetadata.Machine})";
+            }
 
             Logger.WriteLine(LOG_IDENT, $"Loaded from {Paths.Process}");
+            Logger.WriteLine(LOG_IDENT, $"Temp path is {Paths.Temp}");
+            Logger.WriteLine(LOG_IDENT, $"WindowsStartMenu path is {Paths.WindowsStartMenu}");
 
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
 
             HttpClient.Timeout = TimeSpan.FromSeconds(30);
-            HttpClient.DefaultRequestHeaders.Add("User-Agent", ProjectRepository);
+            HttpClient.DefaultRequestHeaders.Add("User-Agent", userAgent);
 
             LaunchSettings = new LaunchSettings(e.Args);
 

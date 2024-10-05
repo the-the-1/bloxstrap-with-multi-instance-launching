@@ -1,5 +1,5 @@
-﻿using System.Windows;
-
+using System.Windows;
+using Bloxstrap.Models.RobloxApi;
 using DiscordRPC;
 
 namespace Bloxstrap.Integrations
@@ -192,6 +192,9 @@ namespace Bloxstrap.Integrations
             }
 
             string icon = "roblox";
+            string smallImageText = "Roblox";
+            string smallImage = "roblox";
+            
 
             var activity = _activityWatcher.Data;
             long placeId = activity.PlaceId;
@@ -224,6 +227,14 @@ namespace Bloxstrap.Integrations
 
             icon = universeDetails.Thumbnail.ImageUrl;
 
+            if (App.Settings.Prop.ShowAccountOnRichPresence)
+            {
+                var userDetails = await UserDetails.Fetch(activity.UserId);
+
+                smallImage = userDetails.Thumbnail.ImageUrl;
+                smallImageText = $"Playing on {userDetails.Data.DisplayName} (@{userDetails.Data.Name})"; // i.e. "axell (@Axelan_se)"
+            }
+
             if (!_activityWatcher.InGame || placeId != activity.PlaceId)
             {
                 App.Logger.WriteLine(LOG_IDENT, "Aborting presence set because game activity has changed");
@@ -244,16 +255,16 @@ namespace Bloxstrap.Integrations
 
             _currentPresence = new DiscordRPC.RichPresence
             {
-                Details = $"Playing {universeName}",
+                Details = universeName,
                 State = status,
                 Timestamps = new Timestamps { Start = timeStarted.ToUniversalTime() },
                 Buttons = GetButtons(),
                 Assets = new Assets
                 {
                     LargeImageKey = icon,
-                    LargeImageText = universeName,
-                    SmallImageKey = "roblox",
-                    SmallImageText = "Roblox"
+                    LargeImageText = universeDetails.Data.Name,
+                    SmallImageKey = smallImage,
+                    SmallImageText = smallImageText
                 }
             };
 

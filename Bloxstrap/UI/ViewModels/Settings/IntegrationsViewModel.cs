@@ -2,8 +2,6 @@
 using System.Windows;
 using System.Windows.Input;
 
-using Bloxstrap.Resources;
-
 using Microsoft.Win32;
 
 using CommunityToolkit.Mvvm.Input;
@@ -13,7 +11,9 @@ namespace Bloxstrap.UI.ViewModels.Settings
     public class IntegrationsViewModel : NotifyPropertyChangedViewModel
     {
         public ICommand AddIntegrationCommand => new RelayCommand(AddIntegration);
+
         public ICommand DeleteIntegrationCommand => new RelayCommand(DeleteIntegration);
+
         public ICommand BrowseIntegrationLocationCommand => new RelayCommand(BrowseIntegrationLocation);
 
         private void AddIntegration()
@@ -58,6 +58,7 @@ namespace Bloxstrap.UI.ViewModels.Settings
             if (dialog.ShowDialog() != true)
                 return;
 
+            SelectedCustomIntegration.Name = dialog.SafeFileName;
             SelectedCustomIntegration.Location = dialog.FileName;
             OnPropertyChanged(nameof(SelectedCustomIntegration));
         }
@@ -100,7 +101,9 @@ namespace Bloxstrap.UI.ViewModels.Settings
                 if (!value)
                 {
                     DiscordActivityJoinEnabled = value;
+                    DiscordAccountOnProfile = value;
                     OnPropertyChanged(nameof(DiscordActivityJoinEnabled));
+                    OnPropertyChanged(nameof(DiscordAccountOnProfile));
                 }
             }
         }
@@ -143,6 +146,12 @@ namespace Bloxstrap.UI.ViewModels.Settings
 
                 App.Settings.Prop.FixTeleports = value;
             }
+        }
+
+        public bool DiscordAccountOnProfile
+        {
+            get => App.Settings.Prop.ShowAccountOnRichPresence;
+            set => App.Settings.Prop.ShowAccountOnRichPresence = value;
         }
 
         public bool DisableAppPatchEnabled

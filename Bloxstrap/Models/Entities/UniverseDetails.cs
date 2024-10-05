@@ -1,11 +1,14 @@
-﻿namespace Bloxstrap.Models
+﻿namespace Bloxstrap.Models.Entities
 {
+    /// <summary>
+    /// Explicit loading. Load from cache before and after a fetch.
+    /// </summary>
     public class UniverseDetails
     {
         private static List<UniverseDetails> _cache { get; set; } = new();
 
         public GameDetailResponse Data { get; set; } = null!;
-        
+
         /// <summary>
         /// Returns data for a 128x128 icon
         /// </summary>
@@ -13,9 +16,9 @@
 
         public static UniverseDetails? LoadFromCache(long id)
         {
-             var cacheQuery = _cache.Where(x => x.Data?.Id == id);
+            var cacheQuery = _cache.Where(x => x.Data?.Id == id);
 
-             if (cacheQuery.Any())
+            if (cacheQuery.Any())
                 return cacheQuery.First();
 
             return null;
