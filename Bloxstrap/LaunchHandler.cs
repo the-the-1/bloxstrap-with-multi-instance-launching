@@ -78,6 +78,10 @@ namespace Bloxstrap
             }
             else
             {
+#if QA_BUILD
+                Frontend.ShowMessageBox("You are about to install a QA build of Bloxstrap. The red window border indicates that this is a QA build.\n\nQA builds are handled completely separately of your standard installation, like a virtual environment.", MessageBoxImage.Information);
+#endif
+
                 new LanguageSelectorDialog().ShowDialog();
 
                 var installer = new UI.Elements.Installer.MainWindow();
@@ -141,11 +145,13 @@ namespace Bloxstrap
                 bool showAlreadyRunningWarning = Process.GetProcessesByName(App.ProjectName).Length > 1;
 
                 var window = new UI.Elements.Settings.MainWindow(showAlreadyRunningWarning);
-                window.Show();
+
+                // typically we'd use Show(), but we need to block to ensure IPL stays in scope
+                window.ShowDialog();
             }
             else
             {
-                App.Logger.WriteLine(LOG_IDENT, $"Found an already existing menu window");
+                App.Logger.WriteLine(LOG_IDENT, "Found an already existing menu window");
 
                 var process = Utilities.GetProcessesSafe().Where(x => x.MainWindowTitle == Strings.Menu_Title).FirstOrDefault();
 
@@ -225,54 +231,9 @@ namespace Bloxstrap
                 }
             }
 
-            string CookiesFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Roblox\LocalStorage\RobloxCookies.dat");
-
-            if (File.Exists(CookiesFilePath))
-            {
-                FileAttributes attributes = File.GetAttributes(CookiesFilePath);
-                
-                if (App.Settings.Prop.FixTeleports)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Attempting to apply teleport fix...");
-
-                    if (!attributes.HasFlag(FileAttributes.ReadOnly))
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is writable, applying teleport fix...");
-
-                        try
-                        {
-                            FileStream fileStream = File.Open(CookiesFilePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-                            fileStream.SetLength(0);
-                            fileStream.Close();
-                        }
-                        catch (Exception ex)
-                        {
-                            App.Logger.WriteLine(LOG_IDENT, $"Failed to clear contents of RobloxCookies.dat | Exception: {ex}");
-                        }
-
-                        File.SetAttributes(CookiesFilePath, FileAttributes.ReadOnly);
-                        App.Logger.WriteLine(LOG_IDENT, $"Successfully applied teleport fix.");
-                    }
-                    else
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, $"RobloxCookies.dat is already read-only, skipping teleport fix.");
-                    }
-                }
-                else
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Attempting to remove teleport fix...");
-
-                    if (attributes.HasFlag(FileAttributes.ReadOnly))
-                    {
-                        File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
-                        App.Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (1)");
-                    }
-                }
-            }
-            else
-            {
-                App.Logger.WriteLine(LOG_IDENT, $"Failed to find RobloxCookies.dat");
-                Frontend.ShowMessageBox($"Failed to find RobloxCookies.dat | Path: {CookiesFilePath}", MessageBoxImage.Error);
+            // only applying the fix after game join allows the user to open the desktop app before joining any game
+            if (!App.Settings.Prop.EnableActivityTracking) {
+                Utilities.ApplyTeleportFix();
             }
 
             Task.Run(bootstrapper.Run).ContinueWith(t =>
@@ -297,17 +258,8 @@ namespace Bloxstrap
 
                     App.Logger.WriteLine(LOG_IDENT, "All Roblox processes closed!");
 
-                    if (File.Exists(CookiesFilePath))
-                    {
-                        FileAttributes attributes = File.GetAttributes(CookiesFilePath);
-
-                        if (attributes.HasFlag(FileAttributes.ReadOnly))
-                        {
-                            File.SetAttributes(CookiesFilePath, attributes & ~FileAttributes.ReadOnly);
-                            App.Logger.WriteLine(LOG_IDENT, $"Successfully removed teleport fix. (2)");
-                        }
-                    }
-
+                    if (File.Exists(App.RobloxCookiesFilePath))
+                        Utilities.RemoveTeleportFix();
                 }
 
                 App.Terminate();

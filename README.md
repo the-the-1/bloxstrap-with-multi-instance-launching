@@ -1,19 +1,29 @@
 > [!CAUTION]
 > The only official places to download Bloxstrap are this GitHub repository and [bloxstraplabs.com](https://bloxstraplabs.com). Any other websites offering downloads or claiming to be us are not controlled by us.
 
-# <img src="https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/raw/main/Images/Bloxstrap.png" width="48"/> Bloxstrap
+<p align="center">
+    <img src="https://github.com/pizzaboxer/bloxstrap/raw/main/Images/Bloxstrap-full-dark.png#gh-dark-mode-only" width="420">
+    <img src="https://github.com/pizzaboxer/bloxstrap/raw/main/Images/Bloxstrap-full-light.png#gh-light-mode-only" width="420">
+</p>
 
-[![License](https://img.shields.io/github/license/the-the-1/bloxstrap-with-multi-instance-launching)](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/blob/main/LICENSE)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/the-the-1/bloxstrap-with-multi-instance-launching/ci.yml?branch=main&label=builds)](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/actions)
-[![Downloads](https://img.shields.io/github/downloads/the-the-1/bloxstrap-with-multi-instance-launching/latest/total?color=981bfe)](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases)
-[![Version](https://img.shields.io/github/v/release/the-the-1/bloxstrap-with-multi-instance-launching?color=7a39fb)](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest)
-[![Discord](https://img.shields.io/discord/1099468797410283540?logo=discord&logoColor=white&label=discord&color=4d3dff)](https://discord.gg/nKjV3mGq6R)
-[![lol](https://img.shields.io/badge/mom%20made-pizza%20rolls-orange)](https://media.tenor.com/FIkSGbGycmAAAAAd/manly-roblox.gif)
+<div align="center">
+
+[![License][shield-repo-license]][repo-license]
+[![GitHub Workflow Status][shield-repo-workflow]][repo-actions]
+[![Crowdin][shield-crowdin-status]][crowdin-project]
+[![Downloads][shield-repo-releases]][repo-releases]
+[![Version][shield-repo-latest]][repo-latest]
+[![Discord][shield-discord-server]][discord-invite]
+[![lol][shield-tenor-meme]][tenor-gif]
+
+</div>
+
+----
 
 Bloxstrap is a third-party replacement for the standard Roblox bootstrapper, providing additional useful features and improvements.
 
-Running into a problem or need help with something? [Check out the Wiki](https://github.com/pizzaboxer/bloxstrap/wiki). If you can't find anything, or would like to suggest something, please [submit an issue](https://github.com/pizzaboxer/bloxstrap/issues).
- 
+Running into a problem or need help with something? [Check out the Wiki](https://github.com/pizzaboxer/bloxstrap/wiki). If you can't find anything, or would like to suggest something, please [submit an issue](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/issues).
+
 Bloxstrap is only supported for PCs running Windows.
 
 ## Frequently Asked Questions
@@ -36,8 +46,8 @@ Bloxstrap is only supported for PCs running Windows.
 - Simple support for modding of content files for customizability (death sound, mouse cursor, etc)
 - See where your server is geographically located (courtesy of [ipinfo.io](https://ipinfo.io))
 - Ability to configure graphics fidelity and UI experience
- 
- ## Installing
+
+## Installing
 Download the [latest release of Bloxstrap](https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest), and run it. Configure your preferences if needed, and install. That's about it!
 
 Alternatively, you can install Bloxstrap via [Winget](https://winstall.app/apps/pizzaboxer.Bloxstrap) by running this in a Command Prompt window:
@@ -51,10 +61,25 @@ It's not unlikely that Windows Smartscreen will show a popup when you run Bloxst
 
 Once installed, Bloxstrap is added to your Start Menu, where you can access the menu and reconfigure your preferences if needed.
 
-## Screenshots
+## Code
 
-<p float="left">
-    <img src="https://github.com/pizzaboxer/bloxstrap/assets/41478239/dcfd0cdf-1aae-45bb-849a-f7710ec63b28" width="435" />
-    <img src="https://github.com/pizzaboxer/bloxstrap/assets/41478239/e08cdf28-4f99-46b5-99f2-5c338aac86db" width="390" />
-    <img src="https://github.com/pizzaboxer/bloxstrap/assets/41478239/7ba35223-9115-401f-bbc1-d15e9c5fd79e" width="232" />
-<p>
+Bloxstrap uses the [WPF UI](https://github.com/lepoco/wpfui) library for the user interface design. We currently use and maintain our own fork of WPF UI at [bloxstraplabs/wpfui](https://github.com/bloxstraplabs/wpfui).
+
+
+[shield-repo-license]:  https://img.shields.io/github/license/the-the-1/bloxstrap-with-multi-instance-launching
+[shield-repo-workflow]: https://img.shields.io/github/actions/workflow/status/the-the-1/bloxstrap-with-multi-instance-launching/ci-release.yml?branch=main&label=builds
+[shield-repo-releases]: https://img.shields.io/github/downloads/the-the-1/bloxstrap-with-multi-instance-launching/latest/total?color=981bfe
+[shield-repo-latest]:   https://img.shields.io/github/v/release/the-the-1/bloxstrap-with-multi-instance-launching?color=7a39fb
+
+[shield-crowdin-status]: https://badges.crowdin.net/bloxstrap/localized.svg
+[shield-discord-server]: https://img.shields.io/discord/1099468797410283540?logo=discord&logoColor=white&label=discord&color=4d3dff
+[shield-tenor-meme]:     https://img.shields.io/badge/mom_made-pizza_rolls-orange
+
+[repo-license]:  https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/blob/main/LICENSE
+[repo-actions]:  https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/actions
+[repo-releases]: https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases
+[repo-latest]:   https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest
+
+[crowdin-project]: https://crowdin.com/project/bloxstrap
+[discord-invite]:  https://discord.gg/nKjV3mGq6R
+[tenor-gif]:       https://media.tenor.com/FIkSGbGycmAAAAAd/manly-roblox.gif

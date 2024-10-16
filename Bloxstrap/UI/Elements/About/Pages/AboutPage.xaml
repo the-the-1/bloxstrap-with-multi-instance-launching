@@ -12,12 +12,17 @@
       d:DesignHeight="1500" d:DesignWidth="800"
       d:DataContext="{d:DesignInstance dmodels:AboutViewModel, IsDesignTimeCreatable=True}"
       Title="AboutPage"
+      KeyDown="UiPage_KeyDown"
       Scrollable="True">
 
+    <ui:UiPage.Resources>
+        <Storyboard x:Key="EggStoryboard">
+            <DoubleAnimation Storyboard.TargetName="Image1" Storyboard.TargetProperty="Opacity" From="1.0" To="0.0" Duration="0:0:3" />
+            <DoubleAnimation Storyboard.TargetName="Image2" Storyboard.TargetProperty="Opacity" From="0.0" To="1.0" Duration="0:0:3" />
+        </Storyboard>
+    </ui:UiPage.Resources>
+
     <StackPanel Margin="0,0,14,14">
-        <StackPanel.Resources>
-            <FrameworkElement x:Key="ProxyElement" DataContext="{Binding}"/>
-        </StackPanel.Resources>
 
         <Grid Margin="0,0,0,24" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
@@ -25,7 +30,9 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Image Grid.Column="0" Width="72" Height="72" VerticalAlignment="Center" Source="pack://application:,,,/Bloxstrap.ico" RenderOptions.BitmapScalingMode="HighQuality" />
+            <Image x:Name="Image1" Grid.Column="0" Width="72" Height="72" VerticalAlignment="Center" Source="pack://application:,,,/Bloxstrap.ico" RenderOptions.BitmapScalingMode="HighQuality" />
+            <Image x:Name="Image2" Grid.Column="0" Width="72" Height="72" VerticalAlignment="Center" Source="pack://application:,,,/Resources/BootstrapperStyles/ByfronDialog/Matt.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0" />
+            
             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -41,14 +48,13 @@
 
         <WrapPanel HorizontalAlignment="Center" Orientation="Horizontal">
             <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_GithubRepository}" Icon="Code24" NavigateUri="https://github.com/the-the-1/bloxstrap-with-multi-instance-launching" />
-            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_HelpInformation}" Icon="BookQuestionMark24" NavigateUri="https://github.com/pizzaboxer/bloxstrap/wiki" />
-            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_ReportIssue}" Icon="BookExclamationMark24" NavigateUri="https://github.com/pizzaboxer/bloxstrap/issues" />
+            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_HelpInformation}" Icon="BookQuestionMark24" NavigateUri="https://github.com/bloxstraplabs/bloxstrap/wiki" />
+            <ui:Anchor Margin="0,0,8,8" Content="{x:Static resources:Strings.Menu_About_ReportIssue}" Icon="BookExclamationMark24" NavigateUri="https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/issues" />
             <ui:Anchor Margin="0,0,0,8" Content="{x:Static resources:Strings.Menu_About_DiscordServer}" Icon="Chat48" NavigateUri="https://discord.gg/nKjV3mGq6R" />
         </WrapPanel>
 
         <StackPanel Visibility="{Binding BuildInformationVisibility, Mode=OneTime}">
             <TextBlock Text="Build Information" FontWeight="Medium" FontSize="20" Margin="0,16,0,0" />
-            <TextBlock Text="hmmmm" Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
 
             <Grid Column="0" Margin="0,8,0,0">
                 <Grid.RowDefinitions>
@@ -144,6 +150,8 @@
                     <controls:MarkdownTextBlock MarkdownText="[axstin](https://github.com/axstin)" />
                     <controls:MarkdownTextBlock MarkdownText="[Mantaraix](https://github.com/Mantaraix)" />
                     <controls:MarkdownTextBlock MarkdownText="[apprehensions](https://github.com/apprehensions)" />
+                    <controls:MarkdownTextBlock MarkdownText="[axellse](https://github.com/axellse)" />
+                    <controls:MarkdownTextBlock MarkdownText="[BlueOutside](https://github.com/BlueOutside)" />
                 </StackPanel>
             </controls:Expander>
         </Grid>

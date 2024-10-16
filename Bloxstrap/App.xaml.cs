@@ -5,8 +5,6 @@ using System.Windows.Threading;
 
 using Microsoft.Win32;
 
-using Bloxstrap.Models.SettingTasks.Base;
-
 namespace Bloxstrap
 {
     /// <summary>
@@ -14,18 +12,24 @@ namespace Bloxstrap
     /// </summary>
     public partial class App : Application
     {
+#if QA_BUILD
+        public const string ProjectName = "Bloxstrap-QA";
+#else
         public const string ProjectName = "Bloxstrap";
+#endif
         public const string ProjectOwner = "pizzaboxer";
         public const string ProjectRepository = "the-the-1/bloxstrap-with-multi-instance-launching";
-        public const string ProjectDownloadLink = "https://bloxstraplabs.com";
-        public const string ProjectHelpLink = "https://github.com/pizzaboxer/bloxstrap/wiki";
-        public const string ProjectSupportLink = "https://github.com/pizzaboxer/bloxstrap/issues/new";
+        public const string ProjectDownloadLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest";
+        public const string ProjectHelpLink = "https://github.com/bloxstraplabs/bloxstrap/wiki";
+        public const string ProjectSupportLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/issues/new";
 
         public const string RobloxPlayerAppName = "RobloxPlayerBeta";
         public const string RobloxStudioAppName = "RobloxStudioBeta";
 
         // simple shorthand for extremely frequently used and long string - this goes under HKCU
         public const string UninstallKey = $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{ProjectName}";
+
+        public static readonly string RobloxCookiesFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Roblox\LocalStorage\RobloxCookies.dat");
 
         public static LaunchSettings LaunchSettings { get; private set; } = null!;
 
@@ -169,7 +173,12 @@ namespace Bloxstrap
             else
             {
                 Logger.WriteLine(LOG_IDENT, $"Compiled {BuildMetadata.Timestamp.ToFriendlyString()} from {BuildMetadata.Machine}");
-                userAgent += $" (Build {BuildMetadata.Machine})";
+
+#if QA_BUILD
+                userAgent += " (QA)";
+#else
+                userAgent += $" (Build {Convert.ToBase64String(Encoding.UTF8.GetBytes(BuildMetadata.Machine))})";
+#endif
             }
 
             Logger.WriteLine(LOG_IDENT, $"Loaded from {Paths.Process}");

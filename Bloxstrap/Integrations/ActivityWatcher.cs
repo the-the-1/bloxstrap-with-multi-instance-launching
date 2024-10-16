@@ -9,20 +9,18 @@
         // they only get printed depending on their configured FLog level, which could change at any time
         // while levels being changed is fairly rare, please limit the number of varying number of FLog types you have to use, if possible
 
+        private const string GameTeleportingEntry            = "[FLog::GameJoinUtil] GameJoinUtil::initiateTeleportToPlace";
         private const string GameJoiningPrivateServerEntry   = "[FLog::GameJoinUtil] GameJoinUtil::joinGamePostPrivateServer";
         private const string GameJoiningReservedServerEntry  = "[FLog::GameJoinUtil] GameJoinUtil::initiateTeleportToReservedServer";
         private const string GameJoiningUniverseEntry        = "[FLog::GameJoinLoadTime] Report game_join_loadtime:";
         private const string GameJoiningUDMUXEntry           = "[FLog::Network] UDMUX Address = ";
         private const string GameJoinedEntry                 = "[FLog::Network] serverId:";
         private const string GameDisconnectedEntry           = "[FLog::Network] Time to disconnect replication data:";
-        private const string GameTeleportingEntry            = "[FLog::SingleSurfaceApp] initiateTeleport";
         private const string GameLeavingEntry                = "[FLog::SingleSurfaceApp] leaveUGCGameInternal";
-        private const string GameJoinLoadTimeEntry           = "[FLog::GameJoinLoadTime] Report game_join_loadtime:";
 
-        private const string GameJoinLoadTimeEntryPattern    = ", userid:([0-9]+)";
         private const string GameJoiningEntryPattern         = @"! Joining game '([0-9a-f\-]{36})' place ([0-9]+) at ([0-9\.]+)";
         private const string GameJoiningPrivateServerPattern = @"""accessCode"":""([0-9a-f\-]{36})""";
-        private const string GameJoiningUniversePattern      = @"universeid:([0-9]+)";
+        private const string GameJoiningUniversePattern      = @"universeid:([0-9]+).*userid:([0-9]+)";
         private const string GameJoiningUDMUXPattern         = @"UDMUX Address = ([0-9\.]+), Port = [0-9]+ \| RCC Server Address = ([0-9\.]+), Port = [0-9]+";
         private const string GameJoinedEntryPattern          = @"serverId: ([0-9\.]+)\|[0-9]+";
         private const string GameMessageEntryPattern         = @"\[BloxstrapRPC\] (.*)";
@@ -53,6 +51,12 @@
 
         public bool IsDisposed = false;
 
+        public ActivityWatcher(string? logFile = null)
+        {
+            if (!String.IsNullOrEmpty(logFile))
+                LogLocation = logFile;
+        }
+
         public async void Start()
         {
             const string LOG_IDENT = "ActivityWatcher::Start";
@@ -67,58 +71,58 @@
             // - check for leaves/disconnects with 'Time to disconnect replication data: {{TIME}}' entry
             //
             // we'll tail the log file continuously, monitoring for any log entries that we need to determine the current game activity
-
-            string logDirectory = Path.Combine(Paths.LocalAppData, "Roblox\\logs");
-
-            if (!Directory.Exists(logDirectory))
-                return;
-
+            
             FileInfo logFileInfo;
 
-            // we need to make sure we're fetching the absolute latest log file
-            // if roblox doesn't start quickly enough, we can wind up fetching the previous log file
-            // good rule of thumb is to find a log file that was created in the last 15 seconds or so
-
-            App.Logger.WriteLine(LOG_IDENT, "Opening Roblox log file...");
-
-            while (true)
+            if (String.IsNullOrEmpty(LogLocation))
             {
-                logFileInfo = new DirectoryInfo(logDirectory)
-                    .GetFiles()
-                    .Where(x => x.Name.Contains("Player", StringComparison.OrdinalIgnoreCase) && x.CreationTime <= DateTime.Now)
-                    .OrderByDescending(x => x.CreationTime)
-                    .First();
+                string logDirectory = Path.Combine(Paths.LocalAppData, "Roblox\\logs");
 
-                if (logFileInfo.CreationTime.AddSeconds(15) > DateTime.Now)
-                    break;
+                if (!Directory.Exists(logDirectory))
+                    return;
 
-                App.Logger.WriteLine(LOG_IDENT, $"Could not find recent enough log file, waiting... (newest is {logFileInfo.Name})");
-                await Task.Delay(1000);
+                // we need to make sure we're fetching the absolute latest log file
+                // if roblox doesn't start quickly enough, we can wind up fetching the previous log file
+                // good rule of thumb is to find a log file that was created in the last 15 seconds or so
+
+                App.Logger.WriteLine(LOG_IDENT, "Opening Roblox log file...");
+
+                while (true)
+                {
+                    logFileInfo = new DirectoryInfo(logDirectory)
+                        .GetFiles()
+                        .Where(x => x.Name.Contains("Player", StringComparison.OrdinalIgnoreCase) && x.CreationTime <= DateTime.Now)
+                        .OrderByDescending(x => x.CreationTime)
+                        .First();
+
+                    if (logFileInfo.CreationTime.AddSeconds(15) > DateTime.Now)
+                        break;
+
+                    App.Logger.WriteLine(LOG_IDENT, $"Could not find recent enough log file, waiting... (newest is {logFileInfo.Name})");
+                    await Task.Delay(1000);
+                }
+
+                OnLogOpen?.Invoke(this, EventArgs.Empty);
+
+                LogLocation = logFileInfo.FullName;
+            }
+            else
+            {
+                logFileInfo = new FileInfo(LogLocation);
             }
 
-            OnLogOpen?.Invoke(this, EventArgs.Empty);
+            var logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-            LogLocation = logFileInfo.FullName;
-            FileStream logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             App.Logger.WriteLine(LOG_IDENT, $"Opened {LogLocation}");
 
-            var logUpdatedEvent = new AutoResetEvent(false);
-            var logWatcher = new FileSystemWatcher()
-            {
-                Path = logDirectory,
-                Filter = Path.GetFileName(logFileInfo.FullName),
-                EnableRaisingEvents = true
-            };
-            logWatcher.Changed += (s, e) => logUpdatedEvent.Set();
-
-            using var sr = new StreamReader(logFileStream);
+            using var streamReader = new StreamReader(logFileStream);
 
             while (!IsDisposed)
             {
-                string? log = await sr.ReadLineAsync();
+                string? log = await streamReader.ReadLineAsync();
 
                 if (log is null)
-                    logUpdatedEvent.WaitOne(250);
+                    await Task.Delay(1000);
                 else
                     ReadLogEntry(log);
             }
@@ -211,40 +215,19 @@
             {
                 // We are not confirmed to be in a game, but we are in the process of joining one
 
-                if (entry.Contains(GameJoinLoadTimeEntry))
-                {
-                    Match match = Regex.Match(entry, GameJoinLoadTimeEntryPattern);
-
-                    if (match.Groups.Count != 2)
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join load time entry");
-                        App.Logger.WriteLine(LOG_IDENT, entry);
-                        return;                
-                    }
-
-                    if (!Int64.TryParse(match.Groups[1].Value, out long result))
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, "Failed to parse userid from game join load time entry");
-                        App.Logger.WriteLine(LOG_IDENT, match.Groups[1].Value);
-                        return;
-                    }
-
-                    Data.UserId = result;
-                    App.Logger.WriteLine(LOG_IDENT, $"Got userid as {Data.UserId}");
-                }
-
                 if (entry.Contains(GameJoiningUniverseEntry))
                 {
                     var match = Regex.Match(entry, GameJoiningUniversePattern);
 
-                    if (match.Groups.Count != 2)
+                    if (match.Groups.Count != 3)
                     {
                         App.Logger.WriteLine(LOG_IDENT, "Failed to assert format for game join universe entry");
                         App.Logger.WriteLine(LOG_IDENT, entry);
                         return;
                     }
 
-                    Data.UniverseId = long.Parse(match.Groups[1].Value);
+                    Data.UniverseId = Int64.Parse(match.Groups[1].Value);
+                    Data.UserId = Int64.Parse(match.Groups[2].Value);
 
                     if (History.Any())
                     {
@@ -288,7 +271,7 @@
                     InGame = true;
                     Data.TimeJoined = DateTime.Now;
 
-                    OnGameJoin?.Invoke(this, new EventArgs());
+                    OnGameJoin?.Invoke(this, EventArgs.Empty);
                 }
             }
             else if (InGame && Data.PlaceId != 0)
@@ -305,16 +288,16 @@
                     InGame = false;
                     Data = new();
 
-                    OnGameLeave?.Invoke(this, new EventArgs());
+                    OnGameLeave?.Invoke(this, EventArgs.Empty);
                 }
                 else if (entry.Contains(GameTeleportingEntry))
                 {
                     App.Logger.WriteLine(LOG_IDENT, $"Initiating teleport to server ({Data})");
                     _teleportMarker = true;
                 }
-                else if (_teleportMarker && entry.Contains(GameJoiningReservedServerEntry))
+                else if (entry.Contains(GameJoiningReservedServerEntry))
                 {
-                    // we only expect to be joining a reserved server if we're teleporting to one from a game
+                    _teleportMarker = true;
                     _reservedTeleportMarker = true;
                 }
                 else if (entry.Contains(GameMessageEntry))

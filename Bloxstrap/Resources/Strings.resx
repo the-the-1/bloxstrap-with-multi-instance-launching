@@ -357,7 +357,7 @@ If not, then please report this exception through a [GitHub issue]({1}) along wi
     <value>2015 (V1)</value>
   </data>
   <data name="Enums.FlagPresets.InGameMenuVersion.V2" xml:space="preserve">
-    <value>2022 (V2)</value>
+    <value>2020 (V2)</value>
   </data>
   <data name="Enums.FlagPresets.InGameMenuVersion.V4" xml:space="preserve">
     <value>2023 (V4)</value>
@@ -540,6 +540,7 @@ Would you like to upgrade your currently installed version?</value>
   </data>
   <data name="Menu.FastFlagEditor.BannerText" xml:space="preserve">
     <value>Misusing this can lead to instability or unexpected things happening.</value>
+    <comment>The element that this string is rendered in *cannot be wrapped* and may be truncated when displayed if too long. If so, try and paraphrase a shortened version.</comment>
   </data>
   <data name="Menu.FastFlagEditor.BannerTitle" xml:space="preserve">
     <value>Use with caution.</value>
@@ -649,7 +650,7 @@ Do NOT use this to import large "flag lists" made by other people that promise t
     <value>Rendering mode</value>
   </data>
   <data name="Menu.FastFlags.Title" xml:space="preserve">
-    <value>Fast Flags</value>
+    <value>Engine Settings</value>
   </data>
   <data name="Menu.FontFiles" xml:space="preserve">
     <value>Font files</value>
@@ -831,13 +832,13 @@ Selecting 'No' will ignore this warning and continue installation.</value>
     <value>Allows for having more than one Roblox game client instance open simultaneously.</value>
   </data>
   <data name="Menu.Integrations.FixTeleports.Title" xml:space="preserve">
-    <value>Allow cross-place teleportation</value>
+    <value>Allow cross-game teleportation</value>
   </data>
   <data name="Menu.Integrations.FixTeleports.Description" xml:space="preserve">
-    <value>Allows for cross-place teleportation with multiple instances. (fixes error 773)</value>
+    <value>Allows for cross-game teleportation with multiple instances. (fixes error 773)</value>
   </data>
   <data name="Menu.Integrations.FixTeleports.ConfirmEnable" xml:space="preserve">
-    <value>This setting will log you out of the desktop app. Are you sure you want to enable it?</value>
+    <value>Enabling this setting will prevent you from using the desktop app while roblox is running. Are you sure you want to enable it?</value>
   </data>
   <data name="Dialog.LanguageSelector.Header" xml:space="preserve">
     <value>Choose preferred language</value>
@@ -957,6 +958,7 @@ Selecting 'No' will ignore this warning and continue installation.</value>
   </data>
   <data name="Installer.Install.Title" xml:space="preserve">
     <value>Install</value>
+    <comment>Refers to "Install" as a verb</comment>
   </data>
   <data name="Installer.Completion.Title" xml:space="preserve">
     <value>Completion</value>
@@ -970,7 +972,7 @@ Selecting 'No' will ignore this warning and continue installation.</value>
   <data name="Installer.Welcome.MainText" xml:space="preserve">
     <value>Thank you for downloading Bloxstrap. 
 
-You should have downloaded it from either {0} or {1}. Those are the only official websites to get it from. It is your responsibility to ensure you download from an official source.
+The only official websites to download Bloxstrap from are {0} and {1}, so please verify that you got it from an official source.
 
 This installation process will be quick and simple, and you will be able to configure any of Bloxstrap's settings after installation.</value>
     <comment>{0} and {1} are URLs</comment>
@@ -1063,6 +1065,7 @@ Bloxstrap was installed at "{1}".</value>
     <value>Check the [Bloxstrap Wiki]({0}) first to see if this problem has already been addressed with a fix.
 
 If not, then please report this exception to the maintainers of this fork. Do NOT report this to Bloxstrap's GitHub issues, as this is an unoffical build.</value>
+    <comment>"fork" in general means "a variation of" or "a different version of". You can alternatively write the first sentence as "...to the maintainers of this version."</comment>
   </data>
   <data name="Installer.Install.Shortcuts.Description" xml:space="preserve">
     <value>These are general shortcuts that bring up a multi-choice launch menu. Shortcuts for specific functions can be created later in the settings.</value>
@@ -1199,7 +1202,7 @@ Please manually delete Bloxstrap.exe from the install location or try restarting
     <value>Extract Roblox icons to folder</value>
   </data>
   <data name="Menu.Shortcuts.ExtractIcons.Description" xml:space="preserve">
-    <value>To use for your shortcuts, right-click it, open properties, change icon, browse, and pick from the Icons folder.</value>
+    <value>Allows you to use Bloxstrap's range of Roblox icons for your shortcuts. [See how.]({0})</value>
   </data>
   <data name="Dialog.RegistryWriteError" xml:space="preserve">
     <value>Bloxstrap is unable to write to the Windows Registry. An antivirus is likely interfering and causing issues. Please check to make sure there isn't anything that would restrict Bloxstrap's operation.</value>
@@ -1241,5 +1244,21 @@ Would you like to enable test mode?</value>
   </data>
   <data name="About.Translators.Description" xml:space="preserve">
     <value>All of Bloxstrap's translations are crowdsourced through [Crowdin]({0}). Everyone listed here are people who generously volunteered their time and effort to help localise Bloxstrap. A massive thank you to everyone here!</value>
+  </data>
+  <data name="Common.Navigation.Install" xml:space="preserve">
+    <value>Install</value>
+    <comment>The word "Install" is being used as a verb in this instance, like the other navigation button texts of "Next" and "Back"</comment>
+  </data>
+  <data name="LaunchMenu.Donate" xml:space="preserve">
+    <value>Support us on Ko-fi!</value>
+    <comment>Call-to-action button</comment>
+  </data>
+  <data name="Paths.Icons" xml:space="preserve">
+    <value>Icons</value>
+    <comment>Name of the folder that gets created according to the "create shortcut icons" option. Ensure that it is a valid folder name.</comment>
+  </data>
+  <data name="Utilities.ApplyTeleportFixFail" xml:space="preserve">
+    <value>Icons</value>
+    <comment>Failed to make RobloxCookies.dat write-only. Please make a bug report about this using the exception dialog that will pop up after pressing OK.</comment>
   </data>
 </root>
