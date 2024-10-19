@@ -85,7 +85,7 @@ namespace Bloxstrap
 
         public static void RemoveTeleportFix()
         {
-            string LOG_IDENT = "Utilities::RemoveTeleportFix";
+            const string LOG_IDENT = "Utilities::RemoveTeleportFix";
 
             string user = Environment.UserDomainName + "\\" + Environment.UserName;
 
@@ -109,7 +109,7 @@ namespace Bloxstrap
 
         public static void ApplyTeleportFix()
         {
-            string LOG_IDENT = "Utilities::ApplyTeleportFix";
+            const string LOG_IDENT = "Utilities::ApplyTeleportFix";
 
             string user = Environment.UserDomainName + "\\" + Environment.UserName;
 
