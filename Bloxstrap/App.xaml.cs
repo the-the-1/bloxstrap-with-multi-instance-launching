@@ -20,6 +20,7 @@ namespace Bloxstrap
 #endif
         public const string ProjectOwner = "pizzaboxer";
         public const string ProjectRepository = "the-the-1/bloxstrap-with-multi-instance-launching";
+        public const string RealProjectRepository = "bloxstraplabs/bloxstrap";
         public const string ProjectDownloadLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest";
         public const string ProjectHelpLink = "https://github.com/bloxstraplabs/bloxstrap/wiki";
         public const string ProjectSupportLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/issues/new";
