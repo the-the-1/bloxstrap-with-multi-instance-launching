@@ -11,6 +11,8 @@
 #warning "Automatic updater debugging is enabled"
 #endif
 
+using System.ComponentModel;
+using System.Data;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Shell;
@@ -123,15 +125,14 @@ namespace Bloxstrap
             App.Logger.WriteLine(LOG_IDENT, "Connectivity check failed");
             App.Logger.WriteException(LOG_IDENT, exception);
 
-            string message = Strings.Dialog_Connectivity_Preventing;
+            string message = Strings.Dialog_Connectivity_BadConnection;
 
-            if (exception.GetType() == typeof(AggregateException))
+            if (exception is AggregateException)
                 exception = exception.InnerException!;
 
-            if (exception.GetType() == typeof(HttpRequestException))
+            // https://gist.github.com/pizzaboxer/4b58303589ee5b14cc64397460a8f386
+            if (exception is HttpRequestException && exception.InnerException is null)
                 message = String.Format(Strings.Dialog_Connectivity_RobloxDown, "[status.roblox.com](https://status.roblox.com)");
-            else if (exception.GetType() == typeof(TaskCanceledException))
-                message = Strings.Dialog_Connectivity_TimedOut;
 
             if (_mustUpgrade)
                 message += $"\n\n{Strings.Dialog_Connectivity_RobloxUpgradeNeeded}\n\n{Strings.Dialog_Connectivity_TryAgainLater}";
@@ -250,6 +251,10 @@ namespace Bloxstrap
             Dialog?.CloseBootstrapper();
         }
 
+        /// <summary>
+        /// Will throw whatever HttpClient can throw
+        /// </summary>
+        /// <returns></returns>
         private async Task GetLatestVersionInfo()
         {
             const string LOG_IDENT = "Bootstrapper::GetLatestVersionInfo";
@@ -260,7 +265,11 @@ namespace Bloxstrap
 
             using var key = Registry.CurrentUser.CreateSubKey($"SOFTWARE\\ROBLOX Corporation\\Environments\\{AppData.RegistryName}\\Channel");
 
-            var match = Regex.Match(App.LaunchSettings.RobloxLaunchArgs, "channel:([a-zA-Z0-9-_]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            var match = Regex.Match(
+                App.LaunchSettings.RobloxLaunchArgs, 
+                "channel:([a-zA-Z0-9-_]+)", 
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+            );
 
             if (match.Groups.Count == 2)
             {
@@ -271,9 +280,12 @@ namespace Bloxstrap
                 Deployment.Channel = value.ToLowerInvariant();
             }
 
-            App.Logger.WriteLine(LOG_IDENT, "Got channel as " + (String.IsNullOrEmpty(Deployment.Channel) ? Deployment.DefaultChannel : Deployment.Channel));
+            if (String.IsNullOrEmpty(Deployment.Channel))
+                Deployment.Channel = Deployment.DefaultChannel;
 
-            if (Deployment.Channel != "production")
+            App.Logger.WriteLine(LOG_IDENT, $"Got channel as {Deployment.DefaultChannel}");
+
+            if (!Deployment.IsDefaultChannel)
                 App.SendStat("robloxChannel", Deployment.Channel);
 
             ClientVersion clientVersion;
@@ -282,14 +294,9 @@ namespace Bloxstrap
             {
                 clientVersion = await Deployment.GetInfo();
             }
-            catch (HttpRequestException ex)
+            catch (InvalidChannelException ex)
             {
-                if (ex.StatusCode is not HttpStatusCode.Unauthorized 
-                    and not HttpStatusCode.Forbidden 
-                    and not HttpStatusCode.NotFound)
-                    throw;
-
-                App.Logger.WriteLine(LOG_IDENT, $"Changing channel from {Deployment.Channel} to {Deployment.DefaultChannel} because HTTP {(int)ex.StatusCode}");
+                App.Logger.WriteLine(LOG_IDENT, $"Resetting channel from {Deployment.Channel} because {ex.StatusCode}");
 
                 Deployment.Channel = Deployment.DefaultChannel;
                 clientVersion = await Deployment.GetInfo();
@@ -297,7 +304,7 @@ namespace Bloxstrap
 
             if (clientVersion.IsBehindDefaultChannel)
             {
-                App.Logger.WriteLine(LOG_IDENT, $"Changing channel from {Deployment.Channel} to {Deployment.DefaultChannel} because channel is behind production");
+                App.Logger.WriteLine(LOG_IDENT, $"Resetting channel from {Deployment.Channel} because it's behind production");
 
                 Deployment.Channel = Deployment.DefaultChannel;
                 clientVersion = await Deployment.GetInfo();
@@ -337,7 +344,12 @@ namespace Bloxstrap
                 WorkingDirectory = AppData.Directory
             };
 
-            if (_launchMode == LaunchMode.StudioAuth)
+            if (_launchMode == LaunchMode.Player && ShouldRunAsAdmin())
+            {
+                startInfo.Verb = "runas";
+                startInfo.UseShellExecute = true;
+            }
+            else if (_launchMode == LaunchMode.StudioAuth)
             {
                 Process.Start(startInfo);
                 return;
@@ -371,6 +383,11 @@ namespace Bloxstrap
             {
                 using var process = Process.Start(startInfo)!;
                 _appPid = process.Id;
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                // 1223 = ERROR_CANCELLED, gets thrown if a UAC prompt is cancelled
+                return;
             }
             catch (Exception)
             {
@@ -454,6 +471,24 @@ namespace Bloxstrap
 
             // allow for window to show, since the log is created pretty far beforehand
             Thread.Sleep(1000);
+        }
+
+        private bool ShouldRunAsAdmin()
+        {
+            foreach (var root in WindowsRegistry.Roots)
+            {
+                using var key = root.OpenSubKey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers");
+
+                if (key is null)
+                    continue;
+
+                string? flags = (string?)key.GetValue(AppData.ExecutablePath);
+
+                if (flags is not null && flags.Contains("RUNASADMIN", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         public void Cancel()
@@ -631,6 +666,9 @@ namespace Bloxstrap
 
             if (Directory.Exists(AppData.Directory))
             {
+                if (Directory.Exists(AppData.OldDirectory))
+                    Directory.Delete(AppData.OldDirectory, true);
+
                 try
                 {
                     // test to see if any files are in use
@@ -1022,6 +1060,8 @@ namespace Bloxstrap
             if (_cancelTokenSource.IsCancellationRequested)
                 return;
 
+            Directory.CreateDirectory(Paths.Downloads);
+
             string packageUrl = Deployment.GetLocation($"/{_latestVersionGuid}-{package.Name}");
             string robloxPackageLocation = Path.Combine(Paths.LocalAppData, "Roblox", "Downloads", package.Signature);
 
@@ -1155,7 +1195,15 @@ namespace Bloxstrap
         {
             const string LOG_IDENT = "Bootstrapper::ExtractPackage";
 
-            string packageFolder = Path.Combine(AppData.Directory, AppData.PackageDirectoryMap[package.Name]);
+            string? packageDir = AppData.PackageDirectoryMap.GetValueOrDefault(package.Name);
+
+            if (packageDir is null)
+            {
+                App.Logger.WriteLine(LOG_IDENT, $"WARNING: {package.Name} was not found in the package map!");
+                return;
+            }
+
+            string packageFolder = Path.Combine(AppData.Directory, packageDir);
             string? fileFilter = null;
 
             // for sharpziplib, each file in the filter needs to be a regex

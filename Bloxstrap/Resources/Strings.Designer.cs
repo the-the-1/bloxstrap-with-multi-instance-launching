@@ -69,7 +69,8 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to These are the people currently supporting Bloxstrap through [Ko-fi]({0}). A massive thank you to everyone here!.
+        ///   Looks up a localized string similar to These are the people who&apos;ve supported Bloxstrap through [Ko-fi]({0}). A massive thank you to everyone here!
+        ///Every person here is ranked by their overall pledge..
         /// </summary>
         public static string About_Supporters_Description {
             get {
@@ -168,6 +169,15 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Roblox is currently running, are you sure you want to launch another instance?.
+        /// </summary>
+        public static string Bootstrapper_ConfirmLaunch_MultiInstanceEnabled {
+            get {
+                return ResourceManager.GetString("Bootstrapper.ConfirmLaunch.MultiInstanceEnabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Bloxstrap tried to upgrade Roblox but can&apos;t because Roblox&apos;s files are still in use.
         ///
         ///Please close any applications that may be using Roblox&apos;s files, and relaunch..
@@ -175,15 +185,6 @@ namespace Bloxstrap.Resources {
         public static string Bootstrapper_FilesInUse {
             get {
                 return ResourceManager.GetString("Bootstrapper.FilesInUse", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Roblox is currently running, are you sure you want to launch another instance?.
-        /// </summary>
-        public static string Bootstrapper_ConfirmLaunch_MultiInstanceEnabled {
-            get {
-                return ResourceManager.GetString("Bootstrapper.ConfirmLaunch.MultiInstanceEnabled", resourceCulture);
             }
         }
         
@@ -436,6 +437,15 @@ namespace Bloxstrap.Resources {
         public static string Common_DiscordRichPresence {
             get {
                 return ResourceManager.GetString("Common.DiscordRichPresence", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export.
+        /// </summary>
+        public static string Common_Export {
+            get {
+                return ResourceManager.GetString("Common.Export", resourceCulture);
             }
         }
         
@@ -837,6 +847,15 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A connection could not be made, which likely indicates a poor internet connection or a firewall block. If your connection is fine, please ensure that your antivirus isn&apos;t blocking Bloxstrap..
+        /// </summary>
+        public static string Dialog_Connectivity_BadConnection {
+            get {
+                return ResourceManager.GetString("Dialog.Connectivity.BadConnection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to More information:.
         /// </summary>
         public static string Dialog_Connectivity_MoreInfo {
@@ -878,15 +897,6 @@ namespace Bloxstrap.Resources {
         public static string Dialog_Connectivity_RobloxUpgradeSkip {
             get {
                 return ResourceManager.GetString("Dialog.Connectivity.RobloxUpgradeSkip", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to The connection timed out, which could indicate a poor internet connection or a firewall block..
-        /// </summary>
-        public static string Dialog_Connectivity_TimedOut {
-            get {
-                return ResourceManager.GetString("Dialog.Connectivity.TimedOut", resourceCulture);
             }
         }
         
@@ -1390,6 +1400,15 @@ namespace Bloxstrap.Resources {
         public static string FileTypes_JSONFiles {
             get {
                 return ResourceManager.GetString("FileTypes.JSONFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Zip archive.
+        /// </summary>
+        public static string FileTypes_ZipArchive {
+            get {
+                return ResourceManager.GetString("FileTypes.ZipArchive", resourceCulture);
             }
         }
         
@@ -2012,7 +2031,7 @@ namespace Bloxstrap.Resources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Prevent against accidentally launching another Roblox instance..
+        ///   Looks up a localized string similar to Prevent against closures of your existing game from accidentally launching another one..
         /// </summary>
         public static string Menu_Behaviour_ConfirmLaunches_Description {
             get {
@@ -2107,6 +2126,42 @@ namespace Bloxstrap.Resources {
         public static string Menu_Bloxstrap_Description {
             get {
                 return ResourceManager.GetString("Menu.Bloxstrap.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gather information that can be uploaded online to troubleshoot a problem you&apos;re having..
+        /// </summary>
+        public static string Menu_Bloxstrap_ExportData_Description {
+            get {
+                return ResourceManager.GetString("Menu.Bloxstrap.ExportData.Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Bloxstrap configuration.
+        /// </summary>
+        public static string Menu_Bloxstrap_ExportData_ExportConfig {
+            get {
+                return ResourceManager.GetString("Menu.Bloxstrap.ExportData.ExportConfig", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All Bloxstrap logs.
+        /// </summary>
+        public static string Menu_Bloxstrap_ExportData_ExportLogs {
+            get {
+                return ResourceManager.GetString("Menu.Bloxstrap.ExportData.ExportLogs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export diagnostic data.
+        /// </summary>
+        public static string Menu_Bloxstrap_ExportData_Title {
+            get {
+                return ResourceManager.GetString("Menu.Bloxstrap.ExportData.Title", resourceCulture);
             }
         }
         
