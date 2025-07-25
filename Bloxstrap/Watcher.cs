@@ -20,37 +20,29 @@ namespace Bloxstrap
         {
             const string LOG_IDENT = "Watcher";
 
-            // Allow multiple watchers if multi instance launching is enabled (there are better ways of doing this but this is fine for now)
             if (!_lock.IsAcquired)
             {
-                if (!App.Settings.Prop.MultiInstanceLaunching)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Watcher instance already exists");
-                    return;
-                }
-                else
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Launching new Watcher instance");
-                }
+                App.Logger.WriteLine(LOG_IDENT, "Watcher instance already exists");
+                return;
             }
 
             string? watcherDataArg = App.LaunchSettings.WatcherFlag.Data;
 
-#if DEBUG
             if (String.IsNullOrEmpty(watcherDataArg))
             {
+#if DEBUG
                 string path = new RobloxPlayerData().ExecutablePath;
                 using var gameClientProcess = Process.Start(path);
 
                 _watcherData = new() { ProcessId = gameClientProcess.Id };
-            }
 #else
-            if (String.IsNullOrEmpty(watcherDataArg))
                 throw new Exception("Watcher data not specified");
 #endif
-
-            if (!String.IsNullOrEmpty(watcherDataArg))
+            }
+            else
+            {
                 _watcherData = JsonSerializer.Deserialize<WatcherData>(Encoding.UTF8.GetString(Convert.FromBase64String(watcherDataArg)));
+            }
 
             if (_watcherData is null)
                 throw new Exception("Watcher data is invalid");
@@ -74,8 +66,7 @@ namespace Bloxstrap
                     };
                 }
 
-                // Only run rich presence for first watcher
-                if (App.Settings.Prop.UseDiscordRichPresence && _lock.IsAcquired)
+                if (App.Settings.Prop.UseDiscordRichPresence)
                     RichPresence = new(ActivityWatcher);
             }
 
@@ -114,7 +105,7 @@ namespace Bloxstrap
 
         public async Task Run()
         {
-            if ((!_lock.IsAcquired && !App.Settings.Prop.MultiInstanceLaunching) || _watcherData is null)
+            if (!_lock.IsAcquired || _watcherData is null)
                 return;
 
             ActivityWatcher?.Start();
@@ -128,7 +119,7 @@ namespace Bloxstrap
                     CloseProcess(pid);
             }
 
-            if (App.LaunchSettings.TestModeFlag.Active && _lock.IsAcquired)
+            if (App.LaunchSettings.TestModeFlag.Active)
                 Process.Start(Paths.Process, "-settings -testmode");
         }
 
@@ -137,8 +128,7 @@ namespace Bloxstrap
             App.Logger.WriteLine("Watcher::Dispose", "Disposing Watcher");
 
             _notifyIcon?.Dispose();
-            if (_lock.IsAcquired)
-                RichPresence?.Dispose();
+            RichPresence?.Dispose();
 
             GC.SuppressFinalize(this);
         }

@@ -4,6 +4,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 
 using Bloxstrap.UI.Elements.Dialogs;
+using Bloxstrap.Enums;
 
 namespace Bloxstrap
 {
@@ -57,6 +58,16 @@ namespace Bloxstrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "Opening watcher");
                 LaunchWatcher();
+            }
+            else if (App.LaunchSettings.MultiInstanceWatcherFlag.Active)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Opening multi-instance watcher");
+                LaunchMultiInstanceWatcher();
+            }
+            else if (App.LaunchSettings.BackgroundUpdaterFlag.Active)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Opening background updater");
+                LaunchBackgroundUpdater();
             }
             else if (App.LaunchSettings.RobloxLaunchMode != LaunchMode.None)
             {
@@ -244,25 +255,7 @@ namespace Bloxstrap
                 App.Bootstrapper.Dialog = dialog;
                 dialog.Bootstrapper = App.Bootstrapper;
             }
-
-            Mutex? singletonMutex = null;
-
-            if (App.Settings.Prop.MultiInstanceLaunching)
-            {
-                App.Logger.WriteLine(LOG_IDENT, "Attempting to create singleton mutex...");
-                try
-                {
-                    Mutex.OpenExisting("ROBLOX_singletonMutex");
-                    App.Logger.WriteLine(LOG_IDENT, "Singleton mutex already exists.");
-                }
-                catch
-                {
-                    // create the singleton mutex before the game client does
-                    singletonMutex = new Mutex(true, "ROBLOX_singletonMutex");
-                    App.Logger.WriteLine(LOG_IDENT, "Created singleton mutex.");
-                }
-            }
-
+            
             // only applying the fix after game join allows the user to open the desktop app before joining any game
             if (!App.Settings.Prop.EnableActivityTracking) {
                 Utilities.ApplyTeleportFix();
@@ -278,20 +271,6 @@ namespace Bloxstrap
 
                     if (t.Exception is not null)
                         App.FinalizeExceptionHandling(t.Exception);
-                } else if (singletonMutex is not null) {
-                    App.Logger.WriteLine(LOG_IDENT, "We have singleton mutex ownership! Running in background until all Roblox processes are closed");
-
-                    // we've got ownership of the roblox singleton mutex!
-                    // if we stop running, everything will screw up once any more roblox instances launched
-                    while (Process.GetProcessesByName("RobloxPlayerBeta").Any())
-                    {
-                        Thread.Sleep(1000);
-                    };
-
-                    App.Logger.WriteLine(LOG_IDENT, "All Roblox processes closed!");
-
-                    if (File.Exists(App.RobloxCookiesFilePath))
-                        Utilities.RemoveTeleportFix();
                 }
 
                 App.Terminate();
@@ -331,6 +310,74 @@ namespace Bloxstrap
 
                 App.Terminate();
             });
+        }
+
+        public static void LaunchMultiInstanceWatcher()
+        {
+            const string LOG_IDENT = "LaunchHandler::LaunchMultiInstanceWatcher";
+
+            App.Logger.WriteLine(LOG_IDENT, "Starting multi-instance watcher");
+
+            Task.Run(MultiInstanceWatcher.Run).ContinueWith(t =>
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Multi instance watcher task has finished");
+
+                if (t.IsFaulted)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, "An exception occurred when running the multi-instance watcher");
+
+                    if (t.Exception is not null)
+                        App.FinalizeExceptionHandling(t.Exception);
+                }
+
+                App.Terminate();
+            });
+        }
+
+        public static void LaunchBackgroundUpdater()
+        {
+            const string LOG_IDENT = "LaunchHandler::LaunchBackgroundUpdater";
+
+            // Activate some LaunchFlags we need
+            App.LaunchSettings.QuietFlag.Active = true;
+            App.LaunchSettings.NoLaunchFlag.Active = true;
+
+            App.Logger.WriteLine(LOG_IDENT, "Initializing bootstrapper");
+            App.Bootstrapper = new Bootstrapper(LaunchMode.Player)
+            {
+                MutexName = "Bloxstrap-BackgroundUpdater",
+                QuitIfMutexExists = true
+            };
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+
+            Task.Run(() =>
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Started event waiter");
+                using (EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.AutoReset, "Bloxstrap-BackgroundUpdaterKillEvent"))
+                    handle.WaitOne();
+
+                App.Logger.WriteLine(LOG_IDENT, "Received close event, killing it all!");
+                App.Bootstrapper.Cancel();
+            }, cts.Token);
+
+            Task.Run(App.Bootstrapper.Run).ContinueWith(t =>
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Bootstrapper task has finished");
+                cts.Cancel(); // stop event waiter
+
+                if (t.IsFaulted)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, "An exception occurred when running the bootstrapper");
+
+                    if (t.Exception is not null)
+                        App.FinalizeExceptionHandling(t.Exception);
+                }
+
+                App.Terminate();
+            });
+
+            App.Logger.WriteLine(LOG_IDENT, "Exiting");
         }
     }
 }

@@ -119,16 +119,7 @@
             string location = BaseUrl;
 
             if (!IsDefaultChannel)
-            {
-                string channelName;
-
-                if (ApplicationSettings.GetSettings(nameof(ApplicationSettings.PCClientBootstrapper), Channel).Get<bool>("FFlagReplaceChannelNameForDownload"))
-                    channelName = "common";
-                else
-                    channelName = Channel.ToLowerInvariant();
-
-                location += $"/channel/{channelName}";
-            }
+                location += "/channel/common";
 
             location += resource;
 
@@ -176,16 +167,15 @@
                     App.Logger.WriteLine(LOG_IDENT, "Failed to contact clientsettingscdn! Falling back to clientsettings...");
                     App.Logger.WriteException(LOG_IDENT, ex);
 
-                    clientVersion = await Http.GetJson<ClientVersion>("https://clientsettings.roblox.com" + path);
-                }
-
-                // check if channel is behind LIVE
-                if (!isDefaultChannel)
-                {
-                    var defaultClientVersion = await GetInfo(DefaultChannel);
-
-                    if (Utilities.CompareVersions(clientVersion.Version, defaultClientVersion.Version) == VersionComparison.LessThan)
-                        clientVersion.IsBehindDefaultChannel = true;
+                    try
+                    {
+                        clientVersion = await Http.GetJson<ClientVersion>("https://clientsettings.roblox.com" + path);
+                    }
+                    catch (HttpRequestException httpEx)
+                    when (!isDefaultChannel && BadChannelCodes.Contains(httpEx.StatusCode))
+                    {
+                        throw new InvalidChannelException(httpEx.StatusCode);
+                    }
                 }
 
                 ClientVersionCache[cacheKey] = clientVersion;

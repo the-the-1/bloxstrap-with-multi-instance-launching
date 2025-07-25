@@ -65,21 +65,20 @@
             IsEnabled="{Binding InnerContent.IsChecked, ElementName=DiscordActivityOption, Mode=OneWay}">
             <ui:ToggleSwitch IsChecked="{Binding DiscordAccountOnProfile, Mode=TwoWay}" />
         </controls:OptionControl>
-        
-        <TextBlock Text="{x:Static resources:Strings.Common_Miscellaneous}" FontSize="20" FontWeight="Medium" Margin="0,16,0,0"/>
-        <TextBlock Text="{x:Static resources:Strings.Menu_Integrations_Miscellaneous_Description}" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
 
-        <controls:OptionControl
-            Header="{x:Static resources:Strings.Menu_Integrations_AllowMultipleInstances_Title}"
-            Description="{x:Static resources:Strings.Menu_Integrations_AllowMultipleInstances_Description}"
-            x:Name="AllowMultipleInstancesOption">
-            <ui:ToggleSwitch IsChecked="{Binding MultiInstanceLaunchingEnabled, Mode=TwoWay}"/>
+        <TextBlock Text="{x:Static resources:Strings.Common_Miscellaneous}" FontSize="20" FontWeight="Medium" Margin="0,16,0,0" />
+
+        <controls:OptionControl 
+            Header="{x:Static resources:Strings.Menu_Integrations_MultiInstanceLaunching_Title}" 
+            Description="{x:Static resources:Strings.Menu_Integrations_MultiInstanceLaunching_Description}" 
+            x:Name="MultiInstanceLaunchingOption">
+            <ui:ToggleSwitch IsChecked="{Binding MultiInstanceLaunchingEnabled, Mode=TwoWay}" />
         </controls:OptionControl>
-
+        
         <controls:OptionControl
             Header="{x:Static resources:Strings.Menu_Integrations_FixTeleports_Title}"
             Description="{x:Static resources:Strings.Menu_Integrations_FixTeleports_Description}"
-            IsEnabled="{Binding InnerContent.IsChecked, ElementName=AllowMultipleInstancesOption, Mode=OneWay}">
+            IsEnabled="{Binding InnerContent.IsChecked, ElementName=MultiInstanceLaunchingOption, Mode=OneWay}">
             <ui:ToggleSwitch IsChecked="{Binding FixTeleportsEnabled, Mode=TwoWay}"/>
         </controls:OptionControl>
 
