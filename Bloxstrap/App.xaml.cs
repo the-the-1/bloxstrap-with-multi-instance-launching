@@ -18,11 +18,11 @@ namespace Bloxstrap
 #else
         public const string ProjectName = "Bloxstrap";
 #endif
-        public const string ProjectOwner = "pizzaboxer";
+        public const string ProjectOwner = "Bloxstrap";
         public const string ProjectRepository = "the-the-1/bloxstrap-with-multi-instance-launching";
         public const string RealProjectRepository = "bloxstraplabs/bloxstrap";
         public const string ProjectDownloadLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/releases/latest";
-        public const string ProjectHelpLink = "https://github.com/bloxstraplabs/bloxstrap/wiki";
+        public const string ProjectHelpLink = "https://bloxstraplabs.com/wiki/help/";
         public const string ProjectSupportLink = "https://github.com/the-the-1/bloxstrap-with-multi-instance-launching/issues/new";
 
         public const string RobloxPlayerAppName = "RobloxPlayerBeta";
@@ -146,10 +146,10 @@ namespace Bloxstrap
         {
             // dont let user switch web environment if debug mode is not on
             if (Settings.Prop.WebEnvironment == WebEnvironment.Production || !Settings.Prop.DeveloperMode)
-                return "bloxstraplabs.com";
+                return "services.bloxstraplabs.com";
 
             string? sub = Settings.Prop.WebEnvironment.GetDescription();
-            return $"web-{sub}.bloxstraplabs.com";
+            return $"services-{sub}.bloxstraplabs.com";
         }
 
         public static bool CanSendLogs()
@@ -389,7 +389,6 @@ namespace Bloxstrap
 
                 if (!LaunchSettings.BypassUpdateCheck)
                     Installer.HandleUpgrade();
-
 
                 LaunchHandler.ProcessLaunchArgs();
             }

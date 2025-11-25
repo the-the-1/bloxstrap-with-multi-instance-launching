@@ -34,9 +34,10 @@
             // try to get the mutex
             bool acquiredMutex;
             using Mutex mutex = new Mutex(false, "ROBLOX_singletonMutex");
+            using Mutex mutex2 = new Mutex(false, "ROBLOX_singletonEvent");
             try
             {
-                acquiredMutex = mutex.WaitOne(0);
+                acquiredMutex = mutex.WaitOne(0) && mutex2.WaitOne(0);
             }
             catch (AbandonedMutexException)
             {
@@ -57,7 +58,7 @@
             int count;
             do
             {
-                Thread.Sleep(5000);
+                Thread.Sleep(1000);
                 count = GetOpenProcessesCount();
             }
             while (count == -1 || count > 0); // redo if -1 (one of the Process apis failed)

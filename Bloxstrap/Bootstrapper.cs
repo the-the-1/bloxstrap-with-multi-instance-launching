@@ -478,7 +478,7 @@ namespace Bloxstrap
         {
             const string LOG_IDENT = "Bootstrapper::LaunchMultiInstanceWatcher";
 
-            if (Utilities.DoesMutexExist("ROBLOX_singletonMutex"))
+            if (Utilities.DoesMutexExist("ROBLOX_singletonMutex") && Utilities.DoesMutexExist("ROBLOX_singletonEvent"))
             {
                 App.Logger.WriteLine(LOG_IDENT, "Roblox singleton mutex already exists");
                 return;
@@ -505,17 +505,6 @@ namespace Bloxstrap
                 // this needs to be done before roblox launches
                 if (App.Settings.Prop.MultiInstanceLaunching)
                     LaunchMultiInstanceWatcher();
-
-                if (App.Settings.Prop.ForceRobloxLanguage)
-                {
-                    var match = Regex.Match(_launchCommandLine, "gameLocale:([a-z_]+)", RegexOptions.CultureInvariant);
-
-                    if (match.Groups.Count == 2)
-                        _launchCommandLine = _launchCommandLine.Replace(
-                            "robloxLocale:en_us",
-                            $"robloxLocale:{match.Groups[1].Value}",
-                            StringComparison.OrdinalIgnoreCase);
-                }
             }
 
             var startInfo = new ProcessStartInfo()
@@ -1478,7 +1467,7 @@ namespace Bloxstrap
 
                         Frontend.ShowConnectivityDialog(
                             Strings.Dialog_Connectivity_UnableToDownload,
-                            String.Format(Strings.Dialog_Connectivity_UnableToDownloadReason, "[https://github.com/bloxstraplabs/bloxstrap/wiki/Bloxstrap-is-unable-to-download-Roblox](https://github.com/bloxstraplabs/bloxstrap/wiki/Bloxstrap-is-unable-to-download-Roblox)"),
+                            String.Format(Strings.Dialog_Connectivity_UnableToDownloadReason, "[https://bloxstraplabs.com/wiki/help/bloxstrap-cannot-download-roblox/](https://bloxstraplabs.com/wiki/help/bloxstrap-cannot-download-roblox/)"),
                             MessageBoxImage.Error,
                             ex
                         );
